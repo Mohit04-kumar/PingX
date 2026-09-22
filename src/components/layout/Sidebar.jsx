@@ -9,13 +9,25 @@ import {
   Settings, 
   Info, 
   LogOut, 
-  ChevronLeft 
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Menu
 } from 'lucide-react';
 import { usePings } from '../../context/PingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar } from '../common/Avatar';
 
-export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, onNavigateToLanding }) {
+export function Sidebar({ 
+  activeTab, 
+  setActiveTab, 
+  isOpen, 
+  setIsOpen, 
+  isExpanded, 
+  setIsExpanded, 
+  onNavigateToLanding 
+}) {
   const { unreadCount } = usePings();
   const { user, logout, isGuest, guestSecondsLeft, openAuthModal } = useAuth();
 
@@ -33,33 +45,6 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, onNavigate
     { id: 'about',    label: 'About',     icon: Info },
   ];
 
-  const navBtn = (item, isActive) => (
-    <button
-      key={item.id}
-      onClick={() => { setActiveTab(item.id); setIsOpen(false); }}
-      className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-      style={{
-        backgroundColor: isActive ? 'var(--accent)' : 'transparent',
-        color: isActive ? '#fff' : 'var(--text-secondary)',
-      }}
-      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bg-elevated)'; }}
-      onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
-    >
-      <div className="flex items-center gap-3">
-        <item.icon className="w-4 h-4" />
-        <span className="font-medium">{item.label}</span>
-      </div>
-      {item.badgeCount > 0 && (
-        <span
-          className="text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-xs"
-          style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-        >
-          {item.badgeCount}
-        </span>
-      )}
-    </button>
-  );
-
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
@@ -68,80 +53,188 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, onNavigate
 
   return (
     <aside
-      className={`fixed top-0 left-0 bottom-0 z-40 w-64 flex flex-col transition-transform duration-300 border-r shadow-sm ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-      style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
+      className={`fixed top-0 left-0 bottom-0 z-40 flex flex-col transition-all duration-300 border-r shadow-xs bg-white border-[#e6e2f8] ${
+        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      } ${isExpanded ? 'w-64' : 'w-20'}`}
     >
       {/* Brand Header */}
-      <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-        <button
-          onClick={() => {
-            if (onNavigateToLanding) onNavigateToLanding();
-            else setActiveTab('home');
-          }}
-          className="text-xl font-black font-heading tracking-wide cursor-pointer transition-transform hover:scale-105"
-          style={{ color: 'var(--text-primary)' }}
-          title="Return to Landing Page"
-        >
-          PING<span style={{ color: 'var(--accent)' }}>X</span>
-        </button>
-        <button onClick={() => setIsOpen(false)} className="lg:hidden p-1.5 rounded-lg cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
-          <ChevronLeft className="w-5 h-5" />
-        </button>
+      <div className={`p-4 border-b border-[#e6e2f8] flex items-center ${isExpanded ? 'justify-between' : 'justify-center'}`}>
+        {isExpanded ? (
+          <>
+            <button
+              onClick={() => {
+                if (onNavigateToLanding) onNavigateToLanding();
+                else setActiveTab('home');
+              }}
+              className="text-xl font-extrabold font-heading tracking-wide cursor-pointer transition-transform hover:scale-105 text-slate-900"
+              title="Return to Landing Page"
+            >
+              PING<span className="text-[#7256c3]">X</span>
+            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="hidden lg:flex p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+                title="Collapse Sidebar"
+              >
+                <PanelLeftClose className="w-5 h-5 text-slate-600" />
+              </button>
+              <button 
+                onClick={() => setIsOpen(false)} 
+                className="lg:hidden p-1.5 rounded-lg cursor-pointer text-slate-500 hover:bg-slate-100"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={() => {
+                if (onNavigateToLanding) onNavigateToLanding();
+                else setActiveTab('home');
+              }}
+              className="w-10 h-10 rounded-2xl bg-violet-100 text-[#7256c3] flex items-center justify-center font-black text-base shadow-xs hover:scale-105 transition-transform cursor-pointer"
+              title="Return to Landing Page"
+            >
+              P
+            </button>
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="hidden lg:flex p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+              title="Expand Sidebar"
+            >
+              <PanelLeftOpen className="w-4 h-4 text-slate-600" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-5 space-y-5">
+      <div className="flex-1 overflow-y-auto px-2.5 py-4 space-y-4 scrollbar-none">
+        
+        {/* Main Nav Section */}
         <div className="space-y-1">
-          <p className="px-3 text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Navigation</p>
-          {mainNavItems.map((item) => navBtn(item, activeTab === item.id))}
+          {isExpanded && (
+            <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-mono mb-2">
+              Navigation
+            </p>
+          )}
+          {mainNavItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => { setActiveTab(item.id); setIsOpen(false); }}
+                className={`w-full flex items-center rounded-2xl transition-all cursor-pointer relative group ${
+                  isExpanded ? 'px-3.5 py-2.5 justify-between' : 'h-11 justify-center'
+                } ${
+                  isActive
+                    ? 'bg-[#7256c3] text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                }`}
+                title={!isExpanded ? item.label : undefined}
+              >
+                <div className={`flex items-center ${isExpanded ? 'gap-3' : 'justify-center'}`}>
+                  <item.icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-800'}`} />
+                  {isExpanded && <span className="text-xs truncate">{item.label}</span>}
+                </div>
+
+                {/* Floating Tooltip when collapsed */}
+                {!isExpanded && (
+                  <div className="absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-md">
+                    {item.label}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="space-y-1 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-          <p className="px-3 text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Account</p>
-          {bottomNavItems.map((item) => navBtn(item, activeTab === item.id))}
+        {/* Account Section */}
+        <div className="space-y-1 pt-3 border-t border-[#e6e2f8]">
+          {isExpanded && (
+            <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-mono mb-2">
+              Account
+            </p>
+          )}
+          {bottomNavItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => { setActiveTab(item.id); setIsOpen(false); }}
+                className={`w-full flex items-center rounded-2xl transition-all cursor-pointer relative group ${
+                  isExpanded ? 'px-3.5 py-2.5 justify-between' : 'h-11 justify-center'
+                } ${
+                  isActive
+                    ? 'bg-[#7256c3] text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                }`}
+                title={!isExpanded ? item.label : undefined}
+              >
+                <div className={`flex items-center ${isExpanded ? 'gap-3' : 'justify-center'}`}>
+                  <item.icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-800'}`} />
+                  {isExpanded && <span className="text-xs truncate">{item.label}</span>}
+                </div>
+
+                {!isExpanded && (
+                  <div className="absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-md">
+                    {item.label}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
+
       </div>
 
-      {/* Guest Mode Banner in Sidebar */}
+      {/* Guest Mode Banner if active */}
       {isGuest && (
-        <div className="px-3.5 py-2.5 mx-3 mb-2 rounded-xl border space-y-1.5" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--accent)' }}>
-          <div className="flex items-center justify-between text-[11px] font-bold">
-            <span style={{ color: 'var(--accent)' }}>⏳ Guest Preview</span>
-            <span className="font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>{formatTime(guestSecondsLeft)}</span>
-          </div>
+        <div className={`mx-2 mb-2 p-2 rounded-xl border border-violet-200 bg-violet-50 text-center ${isExpanded ? 'block' : 'hidden'}`}>
+          <span className="text-[10px] font-bold text-[#7256c3] block">⏳ Guest ({formatTime(guestSecondsLeft)})</span>
           <button
             onClick={() => openAuthModal && openAuthModal('register')}
-            className="w-full py-1 rounded-lg text-[10px] font-extrabold text-white cursor-pointer transition-all"
-            style={{ backgroundColor: 'var(--accent)' }}
+            className="w-full mt-1 py-1 rounded-lg text-[10px] font-bold text-white bg-[#7256c3] cursor-pointer"
           >
-            Save Account / Sign In
+            Save Account
           </button>
         </div>
       )}
 
       {/* User Footer Card */}
-      <div className="p-3.5 border-t" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-subtle)' }}>
-        <div className="flex items-center justify-between">
-          <div onClick={() => setActiveTab('profile')} className="flex items-center gap-3 cursor-pointer overflow-hidden group">
-            <Avatar 
-              src={user?.avatar} 
-              name={user?.name || 'Member'} 
-              size="md"
-              showOnline={true}
-              online={true}
-              className="border-2 group-hover:scale-105 transition-transform" 
-              style={{ borderColor: 'var(--accent)' }} 
-            />
+      <div className={`p-3 border-t border-[#e6e2f8] bg-[#f8f7ff] ${isExpanded ? 'flex items-center justify-between' : 'flex flex-col items-center gap-2'}`}>
+        <div 
+          onClick={() => setActiveTab('profile')} 
+          className="flex items-center gap-2.5 cursor-pointer overflow-hidden group"
+          title={!isExpanded ? `${user?.name || 'Raman Raj'} (@${user?.username || 'ramanraj'})` : undefined}
+        >
+          <Avatar 
+            src={user?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80'} 
+            name={user?.name || 'Raman Raj'} 
+            size={isExpanded ? "md" : "sm"}
+            showOnline={true}
+            online={true}
+            className="border-2 border-violet-200 group-hover:scale-105 transition-transform" 
+          />
+          {isExpanded && (
             <div className="truncate">
-              <p className="text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>{user?.name || 'Member'}</p>
-              <p className="text-[10px] font-semibold truncate" style={{ color: 'var(--text-muted)' }}>@{user?.username || 'user'}</p>
+              <p className="text-xs font-bold text-slate-900 truncate">{user?.name || 'Raman Raj'}</p>
+              <p className="text-[10px] font-medium text-slate-500 truncate">@{user?.username || 'ramanraj'}</p>
             </div>
-          </div>
-          <button onClick={logout} title="Sign out" className="p-2 rounded-xl cursor-pointer transition-colors hover:text-red-500" style={{ color: 'var(--text-muted)' }}>
-            <LogOut className="w-4 h-4" />
-          </button>
+          )}
         </div>
+
+        <button 
+          onClick={logout} 
+          title="Sign out" 
+          className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
+
     </aside>
   );
 }

@@ -6,13 +6,14 @@ import { usePings } from '../../context/PingsContext';
 import { useShop } from '../../context/ShopContext';
 import { useToast } from '../../context/ToastContext';
 import { 
-  Utensils, 
-  Soup, 
-  ConciergeBell, 
-  XCircle, 
+  ShoppingBag, 
+  TrendingDown, 
+  MessageSquare, 
+  Bookmark, 
+  Heart, 
+  Share2, 
   Search, 
   SlidersHorizontal, 
-  ArrowUpRight, 
   ExternalLink, 
   Volume2, 
   Play, 
@@ -20,322 +21,191 @@ import {
   ShieldCheck, 
   Check, 
   X, 
-  ShoppingBag, 
-  MessageSquare, 
   Clock, 
   Sparkles, 
   Star, 
-  Printer,
-  ChevronRight,
+  Plus, 
+  Bot,
   Filter,
   CheckCircle2,
-  Bell,
-  Mail,
-  Tag
+  Tag,
+  ArrowRight,
+  MoreHorizontal
 } from 'lucide-react';
 
-// Comprehensive orders & live commerce feed matching Inntegrate reference image + landing page promises
-const INITIAL_ORDERS_DATA = [
+// Authentic Social & Smart Commerce Feed matching Landing Page Promises (NO FOOD ITEMS)
+const COMMERCE_FEED = [
   {
-    id: 'order-alex-299283',
-    customerName: 'Alex Trie',
-    orderNumber: '#299283',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-    status: 'new',
-    statusLabel: 'New',
-    roomNumber: 'S-01',
-    channel: 'Room Dining • S-01',
-    totalPayment: '$27.50',
-    totalPaymentRupees: '₹2,280',
-    timeAgo: '4m ago',
-    isElevatedFeatured: true,
-    items: [
-      {
-        name: 'Grilled salmon with vegetables',
-        price: '$18.50',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=160&auto=format&fit=crop&q=80'
-      },
-      {
-        name: 'Garden salad',
-        price: '$6.00',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=160&auto=format&fit=crop&q=80'
-      }
-    ],
-    moreItemsCount: 2,
-    moreItemsList: [
-      { name: 'Organic Herbal Green Tea', price: '$2.00', qty: '1x' },
-      { name: 'Garlic Sourdough Toast', price: '$1.00', qty: '1x' }
-    ],
-    orderNotes: 'No dressing on the salad.',
-    category: 'restaurant'
-  },
-  {
-    id: 'order-jerome-299265',
-    customerName: 'Jerome Bell',
-    orderNumber: '#299265',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
-    status: 'on_progress',
-    statusLabel: 'On progress',
-    roomNumber: 'D-08',
-    channel: 'Executive Suite • D-08',
-    totalPayment: '$31.00',
-    totalPaymentRupees: '₹2,580',
-    timeAgo: '14m ago',
-    items: [
-      {
-        name: 'Beef steak',
-        price: '$22.50',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=160&auto=format&fit=crop&q=80'
-      },
-      {
-        name: 'Mashed potatoes',
-        price: '$5.00',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=160&auto=format&fit=crop&q=80'
-      }
-    ],
-    moreItemsCount: 2,
-    moreItemsList: [
-      { name: 'Truffle Garlic Butter', price: '$2.00', qty: '1x' },
-      { name: 'Cold Pressed Lemon Iced Tea', price: '$1.50', qty: '1x' }
-    ],
-    orderNotes: 'Steak well-done, no gravy on potatoes.',
-    category: 'restaurant'
-  },
-  {
-    id: 'order-annette-299222',
-    customerName: 'Annette Black',
-    orderNumber: '#299222',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
-    status: 'ready_to_serve',
-    statusLabel: 'Ready to serve',
-    roomNumber: 'S-22',
-    channel: 'Garden Terrace • S-22',
-    totalPayment: '$36.50',
-    totalPaymentRupees: '₹3,020',
-    timeAgo: '22m ago',
-    items: [
-      {
-        name: 'Chicken curry with basmati rice',
-        price: '$16.50',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=160&auto=format&fit=crop&q=80'
-      },
-      {
-        name: 'Garden salad',
-        price: '$6.00',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=160&auto=format&fit=crop&q=80'
-      }
-    ],
-    moreItemsCount: 3,
-    moreItemsList: [
-      { name: 'Organic Mango Lassi', price: '$5.00', qty: '1x' },
-      { name: 'Butter Garlic Naan', price: '$4.00', qty: '2x' },
-      { name: 'Roasted Spiced Papadum', price: '$2.00', qty: '1x' }
-    ],
-    orderNotes: 'Mild spice level.',
-    category: 'restaurant'
-  },
-  {
-    id: 'order-raman-299104',
-    customerName: 'Raman Raj',
-    orderNumber: '#PING-299104',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
-    status: 'new',
-    statusLabel: 'New',
-    roomNumber: 'Live Stream',
-    channel: 'PingX Encrypted Audio Stream',
-    totalPayment: '₹26,990',
-    totalPaymentRupees: '₹26,990 ($325.00)',
+    id: 'post-sony-xm5',
+    author: {
+      name: 'Raman Raj',
+      username: 'ramanraj',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+      badge: 'Deal Hunter & Reviewer',
+      isVerified: true
+    },
     timeAgo: '12m ago',
+    title: 'Sony WH-1000XM5 Wireless Active Noise Canceling Headphones',
+    category: 'Audio',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=700&auto=format&fit=crop&q=80',
+    currentPrice: 26990,
+    originalPrice: 28990,
+    discount: 'Save ₹2,000',
+    lowestMerchant: 'Amazon.in',
+    lowestUrl: 'https://www.amazon.in',
+    merchants: [
+      { name: 'Amazon.in', price: 26990, isLowest: true, url: 'https://www.amazon.in' },
+      { name: 'Flipkart', price: 27490, isLowest: false, url: 'https://www.flipkart.com' },
+      { name: 'Croma', price: 28990, isLowest: false, url: 'https://www.croma.com' },
+      { name: 'Reliance Digital', price: 28990, isLowest: false, url: 'https://www.reliancedigital.in' }
+    ],
     isAudioNote: true,
     audioDuration: '0:34',
     audioTitle: 'Lossless Voice Note: Price alert strategy',
-    audioMessage: 'Hey! The price scanner found ₹2,000 off on the Sony XM5 on Amazon vs Croma. Tap play to listen!',
-    items: [
-      {
-        name: 'Sony WH-1000XM5 Wireless ANC',
-        price: '₹26,990',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=160&auto=format&fit=crop&q=80'
-      },
-      {
-        name: 'Hard Shell Protective Travel Case',
-        price: '₹1,490',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=160&auto=format&fit=crop&q=80'
-      }
-    ],
-    moreItemsCount: 1,
-    moreItemsList: [
-      { name: 'USB-C 65W Fast Charging Braided Cable', price: '₹799', qty: '1x' }
-    ],
-    orderNotes: 'Lossless Voice Note: Amazon price is lowest across 8 verified retailers.',
-    category: 'deal',
-    dealDetails: {
-      store: 'Amazon.in',
-      originalPrice: '₹28,990',
-      discount: 'Save ₹2,000',
-      competitors: [
-        { name: 'Amazon.in', price: 26990, isLowest: true, url: 'https://www.amazon.in' },
-        { name: 'Flipkart', price: 27490, isLowest: false, url: 'https://www.flipkart.com' },
-        { name: 'Croma', price: 28990, isLowest: false, url: 'https://www.croma.com' },
-        { name: 'Reliance Digital', price: 28990, isLowest: false, url: 'https://www.reliancedigital.in' }
-      ]
-    }
+    audioMessage: 'Hey! Amazon just dropped Sony XM5 by ₹2,000 below Croma retail. Take a listen to my 30-second breakdown before buying!',
+    specs: {
+      'Noise Cancellation': 'Industry-leading Dual QN1 ANC',
+      'Battery Life': '30 Hours with Fast Charge',
+      'Weight': '250g Ultralight Comfort'
+    },
+    likesCount: 142,
+    commentsCount: 28
   },
   {
-    id: 'order-kristin-291234',
-    customerName: 'Kristin Watson',
-    orderNumber: '#291234',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80',
-    status: 'ready_to_serve',
-    statusLabel: 'Ready to serve',
-    roomNumber: 'Suite 104',
-    channel: 'Poolside Lounge • Suite 104',
-    totalPayment: '$48.00',
-    totalPaymentRupees: '₹3,990',
+    id: 'post-macbook-m3',
+    author: {
+      name: 'Sneha Kapoor',
+      username: 'snehak',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
+      badge: 'Bangalore Tech Club',
+      isVerified: true
+    },
     timeAgo: '35m ago',
-    items: [
-      {
-        name: 'Artisan Margherita Pizza',
-        price: '$24.00',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=160&auto=format&fit=crop&q=80'
-      },
-      {
-        name: 'Truffle Parmesan Fries',
-        price: '$12.00',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=160&auto=format&fit=crop&q=80'
-      }
+    title: 'Apple MacBook Air M3 (13.6-inch, 16GB Unified Memory, 512GB SSD)',
+    category: 'Laptops',
+    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=700&auto=format&fit=crop&q=80',
+    currentPrice: 114900,
+    originalPrice: 134900,
+    discount: 'Save ₹20,000',
+    lowestMerchant: 'Croma',
+    lowestUrl: 'https://www.croma.com',
+    merchants: [
+      { name: 'Croma', price: 114900, isLowest: true, url: 'https://www.croma.com' },
+      { name: 'Amazon.in', price: 119900, isLowest: false, url: 'https://www.amazon.in' },
+      { name: 'Reliance Digital', price: 122900, isLowest: false, url: 'https://www.reliancedigital.in' },
+      { name: 'Apple Store', price: 134900, isLowest: false, url: 'https://www.apple.com/in' }
     ],
-    moreItemsCount: 2,
-    moreItemsList: [
-      { name: 'Sparkling Italian Blood Orange Soda', price: '$6.00', qty: '1x' },
-      { name: 'Classic Espresso Tiramisu', price: '$6.00', qty: '1x' }
+    aiSummary: [
+      'Croma offers lowest verified deal at ₹1,14,900 with ₹5,000 instant HDFC card cashback.',
+      'M3 chip delivers 18-hour battery life with silent fanless operation and dual external display support.'
     ],
-    orderNotes: 'Deliver to poolside lounge cabana 3.',
-    category: 'restaurant'
+    specs: {
+      'Processor': 'Apple M3 8-core CPU / 10-core GPU',
+      'Memory': '16GB Unified RAM',
+      'Display': '13.6" Liquid Retina 500 nits'
+    },
+    likesCount: 318,
+    commentsCount: 45
   },
   {
-    id: 'order-jenny-299244',
-    customerName: 'Jenny Wilson',
-    orderNumber: '#299244',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80',
-    status: 'on_progress',
-    statusLabel: 'On progress',
-    roomNumber: 'Room 302',
-    channel: 'Deluxe Suite • Room 302',
-    totalPayment: '$42.50',
-    totalPaymentRupees: '₹3,520',
-    timeAgo: '42m ago',
-    items: [
-      {
-        name: 'Pan-Seared Seabass',
-        price: '$28.50',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=160&auto=format&fit=crop&q=80'
-      },
-      {
-        name: 'Roasted Asparagus with Lemon',
-        price: '$8.00',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1515471204630-f633f8d6b241?w=160&auto=format&fit=crop&q=80'
-      }
+    id: 'post-nike-airmax',
+    author: {
+      name: 'Alex Chen',
+      username: 'alexchen',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+      badge: 'Sneaker Scout',
+      isVerified: false
+    },
+    timeAgo: '48m ago',
+    title: 'Nike Air Max Impact 4 Basketball Shoes (Wolf Grey / Royal)',
+    category: 'Footwear',
+    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=700&auto=format&fit=crop&q=80',
+    currentPrice: 4299,
+    originalPrice: 6995,
+    discount: '38% OFF',
+    lowestMerchant: 'Myntra',
+    lowestUrl: 'https://www.myntra.com',
+    merchants: [
+      { name: 'Myntra', price: 4299, isLowest: true, url: 'https://www.myntra.com' },
+      { name: 'Flipkart', price: 5499, isLowest: false, url: 'https://www.flipkart.com' },
+      { name: 'Amazon.in', price: 5890, isLowest: false, url: 'https://www.amazon.in' },
+      { name: 'Tata CLiQ', price: 6290, isLowest: false, url: 'https://www.tatacliq.com' }
     ],
-    moreItemsCount: 2,
-    moreItemsList: [
-      { name: 'Herb Vinaigrette Dip', price: '$2.50', qty: '1x' },
-      { name: 'San Pellegrino Sparkling Mineral Water', price: '$3.50', qty: '1x' }
-    ],
-    orderNotes: 'Gluten-free preference confirmed with culinary team.',
-    category: 'restaurant'
+    specs: {
+      'Cushioning': 'Max Air heel air-pocket',
+      'Traction': 'Herringbone outdoor rubber',
+      'Weight': '340g Responsive Grip'
+    },
+    likesCount: 204,
+    commentsCount: 19
   },
   {
-    id: 'order-sneha-298912',
-    customerName: 'Sneha Kapoor',
-    orderNumber: '#PING-298912',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
-    status: 'ready_to_serve',
-    statusLabel: 'Ready to serve',
-    roomNumber: 'Croma Hub',
-    channel: 'Bangalore Tech Club Matrix',
-    totalPayment: '₹1,14,900',
-    totalPaymentRupees: '₹1,14,900 ($1,380.00)',
-    timeAgo: '1h 10m ago',
-    items: [
-      {
-        name: 'Apple MacBook Air M3 (16GB, 512GB)',
-        price: '₹1,14,900',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=160&auto=format&fit=crop&q=80'
-      },
-      {
-        name: 'USB-C 7-in-1 Multiport Adapter',
-        price: '₹3,490',
-        qty: '1x',
-        image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=160&auto=format&fit=crop&q=80'
-      }
+    id: 'post-galaxy-watch6',
+    author: {
+      name: 'Marcus Vance',
+      username: 'marcusv',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
+      badge: 'Wearables & Health Tech',
+      isVerified: true
+    },
+    timeAgo: '1h 15m ago',
+    title: 'Samsung Galaxy Watch6 LTE (44mm, Sapphire Crystal Glass)',
+    category: 'Wearables',
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=700&auto=format&fit=crop&q=80',
+    currentPrice: 24999,
+    originalPrice: 36999,
+    discount: '32% OFF',
+    lowestMerchant: 'Amazon.in',
+    lowestUrl: 'https://www.amazon.in',
+    merchants: [
+      { name: 'Amazon.in', price: 24999, isLowest: true, url: 'https://www.amazon.in' },
+      { name: 'Flipkart', price: 25499, isLowest: false, url: 'https://www.flipkart.com' },
+      { name: 'Samsung Store', price: 29999, isLowest: false, url: 'https://www.samsung.com/in' },
+      { name: 'Reliance Digital', price: 26999, isLowest: false, url: 'https://www.reliancedigital.in' }
     ],
-    moreItemsCount: 1,
-    moreItemsList: [
-      { name: 'MagSafe 3 Braided Fast Charging Cable', price: '₹2,100', qty: '1x' }
-    ],
-    orderNotes: 'AI Fact: Lowest verified price on Croma with ₹5,000 HDFC card cashback.',
-    category: 'deal',
-    dealDetails: {
-      store: 'Croma',
-      originalPrice: '₹1,34,900',
-      discount: 'Save ₹20,000',
-      competitors: [
-        { name: 'Croma', price: 114900, isLowest: true, url: 'https://www.croma.com' },
-        { name: 'Amazon.in', price: 119900, isLowest: false, url: 'https://www.amazon.in' },
-        { name: 'Reliance Digital', price: 122900, isLowest: false, url: 'https://www.reliancedigital.in' },
-        { name: 'Apple Store', price: 134900, isLowest: false, url: 'https://www.apple.com/in' }
-      ]
-    }
+    specs: {
+      'Connectivity': 'Standalone 4G LTE + Bluetooth 5.3',
+      'Health Sensors': 'BioActive Sensor (ECG + Body Comp)',
+      'Water Resistance': '5ATM + IP68 Rating'
+    },
+    likesCount: 187,
+    commentsCount: 22
   }
+];
+
+const INSTAGRAM_STORIES = [
+  { name: 'Your Story', username: 'ramanraj', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80', isSelf: true },
+  { name: 'Sneha K.', username: 'snehak', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80', hasUnseen: true },
+  { name: 'Alex Chen', username: 'alexchen', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80', hasUnseen: true },
+  { name: 'Priya S.', username: 'priya_tech', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80', hasUnseen: true },
+  { name: 'Marcus V.', username: 'marcusv', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80', hasUnseen: false },
+  { name: 'Elena R.', username: 'elena', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80', hasUnseen: false }
 ];
 
 export function DashboardView({ setActiveTab }) {
   const { user } = useAuth();
+  const { addToCart, watchlist = [], toggleWatchlist, setIsCartOpen, cart = [] } = useShop();
   const { addToast } = useToast();
 
-  // Top Nav active item state
-  const [activeHeaderTab, setActiveHeaderTab] = useState('Restaurant');
-
-  // Filter States matching Inntegrate reference
-  const [statusFilters, setStatusFilters] = useState({
-    new: true,
-    on_progress: true,
-    ready_to_serve: true,
-    cancelled: false
-  });
-
-  const [filterByRadio, setFilterByRadio] = useState('recent'); // 'recent', 'last_hour', 'today', 'custom'
-  const [cardViewToggle, setCardViewToggle] = useState(true);
+  // Search & Filter state
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedStore, setSelectedStore] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [likedPosts, setLikedPosts] = useState({});
 
-  // Audio Playback Simulation for Lossless Voice Notes
+  // Audio Playback Simulation for Raman Raj's Lossless Voice Note
   const [playingAudioId, setPlayingAudioId] = useState(null);
 
   // Popping Inspection Detail Modal State
-  const [inspectedOrder, setInspectedOrder] = useState(null);
+  const [inspectedPost, setInspectedPost] = useState(null);
 
-  // Toggle checkbox handler
-  const handleToggleStatus = (key) => {
-    setStatusFilters((prev) => ({
+  const toggleLike = (postId) => {
+    setLikedPosts((prev) => ({
       ...prev,
-      [key]: !prev[key]
+      [postId]: !prev[postId]
     }));
   };
 
-  // Play audio toggle
   const togglePlayAudio = (id) => {
     if (playingAudioId === id) {
       setPlayingAudioId(null);
@@ -345,229 +215,151 @@ export function DashboardView({ setActiveTab }) {
     }
   };
 
-  // Filter logic
-  const filteredOrders = useMemo(() => {
-    return INITIAL_ORDERS_DATA.filter((order) => {
-      // Status checkbox filter
-      if (!statusFilters[order.status]) return false;
-
-      // Search query filter
+  // Filtered Feed
+  const filteredFeed = useMemo(() => {
+    return COMMERCE_FEED.filter((post) => {
+      if (selectedCategory !== 'All' && post.category !== selectedCategory) return false;
+      if (selectedStore !== 'All' && post.lowestMerchant !== selectedStore) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchesName = order.customerName.toLowerCase().includes(q);
-        const matchesNumber = order.orderNumber.toLowerCase().includes(q);
-        const matchesRoom = order.roomNumber.toLowerCase().includes(q);
-        const matchesItem = order.items.some((i) => i.name.toLowerCase().includes(q));
-        const matchesNote = order.orderNotes.toLowerCase().includes(q);
-        if (!matchesName && !matchesNumber && !matchesRoom && !matchesItem && !matchesNote) {
-          return false;
-        }
+        const matchesTitle = post.title.toLowerCase().includes(q);
+        const matchesAuthor = post.author.name.toLowerCase().includes(q);
+        const matchesCategory = post.category.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesAuthor && !matchesCategory) return false;
       }
-
       return true;
     });
-  }, [statusFilters, searchQuery]);
-
-  // Counts for top 4 metric cards
-  const newCount = 18;
-  const onProgressCount = 2;
-  const readyToServeCount = 7;
-  const cancelledCount = 3;
+  }, [selectedCategory, selectedStore, searchQuery]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-20 animate-fadeIn text-slate-900">
+    <div className="space-y-6 max-w-6xl mx-auto pb-20 animate-fadeIn text-slate-900">
       
-      {/* ── Top Bar matching Inntegrate Restaurant Header ── */}
-      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#e6e2f8] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        
-        {/* Left: Brand Icon Pill & Nav Links */}
-        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
-          
-          {/* Logo / Brand Pill */}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-violet-50 border border-violet-200">
-            <div className="w-6 h-6 rounded-xl bg-[#7256c3] text-white flex items-center justify-center font-black text-xs shadow-2xs">
-              P
-            </div>
-            <span className="font-extrabold text-sm tracking-tight text-slate-900 font-heading">
-              Inntegrate
-            </span>
-          </div>
-
-          {/* Navigation Links */}
-          <div className="flex items-center gap-1 overflow-x-auto text-xs font-bold">
-            {[
-              { id: 'Dashboard', label: 'Dashboard', action: () => {} },
-              { id: 'Guests', label: 'Guests', action: () => setActiveTab?.('connect') },
-              { id: 'Reservations', label: 'Reservations', action: () => setActiveTab?.('pings') },
-              { id: 'Rooms', label: 'Rooms', action: () => setActiveTab?.('chats') },
-              { id: 'Restaurant', label: 'Restaurant', action: () => {} }
-            ].map((tab) => {
-              const isActive = activeHeaderTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveHeaderTab(tab.id);
-                    tab.action();
-                  }}
-                  className={`px-3.5 py-1.5 rounded-full transition-all cursor-pointer whitespace-nowrap ${
-                    isActive
-                      ? 'bg-[#1e1b4b] text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right: Quick Action Icons & User Avatar */}
-        <div className="flex items-center gap-2.5 self-end md:self-auto">
-          
-          <button
-            type="button"
-            onClick={() => setActiveTab?.('shop')}
-            className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-600 flex items-center justify-center cursor-pointer border border-[#e6e2f8] transition-colors"
-            title="Search Shop Deals"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab?.('chats')}
-            className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-600 flex items-center justify-center cursor-pointer border border-[#e6e2f8] transition-colors"
-            title="Direct Messages"
-          >
-            <Mail className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab?.('pings')}
-            className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-600 flex items-center justify-center cursor-pointer border border-[#e6e2f8] transition-colors relative"
-            title="Pings & Alerts"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white" />
-          </button>
-
-          {/* User Avatar */}
-          <div 
-            onClick={() => setActiveTab?.('profile')}
-            className="flex items-center gap-2 pl-1 cursor-pointer group"
-          >
-            <div className="relative">
-              <img
-                src={user?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80'}
-                alt={user?.name || 'Raman Raj'}
-                className="w-9 h-9 rounded-full object-cover border-2 border-violet-200 group-hover:border-[#7256c3] transition-colors"
-              />
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white absolute bottom-0 right-0" />
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* ── Section Title: Restaurant & Smart Orders ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold font-heading text-slate-900 tracking-tight">
-            Restaurant
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Live order queue, multi-merchant price comparison, and lossless direct communications.
-          </p>
-        </div>
-
-        {/* Live Status indicator */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold self-start sm:self-auto">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          Live Orders Sync Active
+      {/* ── Instagram-Style Story Circles (Active Contacts & Creators) ── */}
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#e6e2f8] shadow-xs overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-4 sm:gap-6 min-w-max">
+          {INSTAGRAM_STORIES.map((story, sIdx) => (
+            <button
+              key={sIdx}
+              type="button"
+              onClick={() => {
+                if (story.isSelf) setActiveTab?.('profile');
+                else {
+                  addToast(`Opening ${story.name}'s Profile`, `Viewing verified deal scout portfolio`, 'info', 2000);
+                }
+              }}
+              className="flex flex-col items-center gap-1.5 cursor-pointer group"
+            >
+              <div className="relative">
+                <div className={`p-0.5 rounded-full transition-transform group-hover:scale-105 ${
+                  story.isSelf 
+                    ? 'bg-slate-200' 
+                    : story.hasUnseen 
+                      ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-[#7256c3]' 
+                      : 'bg-slate-300'
+                }`}>
+                  <img
+                    src={story.avatar}
+                    alt={story.name}
+                    className="w-14 h-14 rounded-full object-cover border-2 border-white bg-slate-50"
+                  />
+                </div>
+                {story.isSelf && (
+                  <div className="w-4 h-4 rounded-full bg-[#7256c3] text-white flex items-center justify-center absolute bottom-0 right-0 border-2 border-white font-bold text-[10px]">
+                    +
+                  </div>
+                )}
+              </div>
+              <span className="text-[11px] font-semibold text-slate-700 max-w-[68px] truncate">
+                {story.name}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── 4 Top KPI Metric Cards (Matching Inntegrate Reference Image in Pure Light Theme) ── */}
+      {/* ── 4 Top KPI Metric Cards (Matching Landing Page Promises) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Metric 1: New orders */}
-        <div className="bg-white rounded-3xl p-5 border border-[#e6e2f8] shadow-xs hover:shadow-md transition-all flex items-center justify-between group">
+        {/* Metric 1: Active Deals */}
+        <div 
+          onClick={() => setActiveTab?.('shop')}
+          className="bg-white rounded-3xl p-5 border border-[#e6e2f8] shadow-xs hover:shadow-md transition-all flex items-center justify-between cursor-pointer group"
+        >
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-500 block">New orders</span>
-            <span className="text-3xl sm:text-4xl font-extrabold font-heading text-slate-900 tracking-tight">
-              {newCount}
-            </span>
+            <span className="text-xs font-semibold text-slate-500 block">Verified Deals</span>
+            <span className="text-3xl font-extrabold font-heading text-slate-900 tracking-tight">18</span>
+            <span className="text-[10px] font-bold text-emerald-600 block">8 Stores Synced</span>
           </div>
-          <div className="w-11 h-11 rounded-full bg-[#1e1b4b] text-violet-300 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-            <Utensils className="w-5 h-5 text-violet-200" />
+          <div className="w-11 h-11 rounded-2xl bg-violet-100 text-[#7256c3] flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+            <ShoppingBag className="w-5 h-5" />
           </div>
         </div>
 
-        {/* Metric 2: On progress */}
-        <div className="bg-white rounded-3xl p-5 border border-[#e6e2f8] shadow-xs hover:shadow-md transition-all flex items-center justify-between group">
+        {/* Metric 2: Price Drops */}
+        <div 
+          onClick={() => setSelectedCategory('All')}
+          className="bg-white rounded-3xl p-5 border border-[#e6e2f8] shadow-xs hover:shadow-md transition-all flex items-center justify-between cursor-pointer group"
+        >
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-500 block">On progress</span>
-            <span className="text-3xl sm:text-4xl font-extrabold font-heading text-slate-900 tracking-tight">
-              {onProgressCount}
-            </span>
+            <span className="text-xs font-semibold text-slate-500 block">Live Price Drops</span>
+            <span className="text-3xl font-extrabold font-heading text-slate-900 tracking-tight">7</span>
+            <span className="text-[10px] font-bold text-emerald-600 block">Up to 47% OFF</span>
           </div>
-          <div className="w-11 h-11 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-            <Soup className="w-5 h-5 text-white" />
+          <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+            <TrendingDown className="w-5 h-5" />
           </div>
         </div>
 
-        {/* Metric 3: Ready to serve */}
-        <div className="bg-white rounded-3xl p-5 border border-[#e6e2f8] shadow-xs hover:shadow-md transition-all flex items-center justify-between group">
+        {/* Metric 3: Direct Messages */}
+        <div 
+          onClick={() => setActiveTab?.('chats')}
+          className="bg-white rounded-3xl p-5 border border-[#e6e2f8] shadow-xs hover:shadow-md transition-all flex items-center justify-between cursor-pointer group"
+        >
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-500 block">Ready to serve</span>
-            <span className="text-3xl sm:text-4xl font-extrabold font-heading text-slate-900 tracking-tight">
-              {readyToServeCount}
-            </span>
+            <span className="text-xs font-semibold text-slate-500 block">Direct Chats</span>
+            <span className="text-3xl font-extrabold font-heading text-slate-900 tracking-tight">14</span>
+            <span className="text-[10px] font-bold text-violet-600 block">Lossless Audio Online</span>
           </div>
-          <div className="w-11 h-11 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-            <ConciergeBell className="w-5 h-5 text-white" />
+          <div className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+            <MessageSquare className="w-5 h-5" />
           </div>
         </div>
 
-        {/* Metric 4: Cancelled orders */}
-        <div className="bg-white rounded-3xl p-5 border border-[#e6e2f8] shadow-xs hover:shadow-md transition-all flex items-center justify-between group">
+        {/* Metric 4: Smart Cart & Saved */}
+        <div 
+          onClick={() => setIsCartOpen(true)}
+          className="bg-white rounded-3xl p-5 border border-[#e6e2f8] shadow-xs hover:shadow-md transition-all flex items-center justify-between cursor-pointer group"
+        >
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-500 block">Cancelled orders</span>
-            <span className="text-3xl sm:text-4xl font-extrabold font-heading text-slate-900 tracking-tight">
-              {cancelledCount}
+            <span className="text-xs font-semibold text-slate-500 block">Smart Cart Items</span>
+            <span className="text-3xl font-extrabold font-heading text-slate-900 tracking-tight">
+              {cart.length > 0 ? cart.length : 4}
             </span>
+            <span className="text-[10px] font-bold text-slate-500 block">View Cart Drawer ↗</span>
           </div>
-          <div className="w-11 h-11 rounded-full bg-pink-500 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-            <XCircle className="w-5 h-5 text-white" />
+          <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+            <Bookmark className="w-5 h-5" />
           </div>
         </div>
 
       </div>
 
-      {/* ── Main Workspace Grid: Left Filter Column + Central Order Cards Matrix ── */}
+      {/* ── Main Layout: Left Filters + Instagram/PingX Commerce Feed ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Left Filter Sidebar matching Inntegrate sidebar */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-6">
+        {/* Left Filter & Search Column */}
+        <div className="lg:col-span-4 xl:col-span-4 space-y-6">
           
           <div className="bg-white rounded-3xl p-6 border border-[#e6e2f8] shadow-xs space-y-6">
             
-            {/* Header: Filters with Reset */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-extrabold font-heading text-slate-900">Filters</h3>
-              {(searchQuery || !statusFilters.new || !statusFilters.on_progress || !statusFilters.ready_to_serve || statusFilters.cancelled) && (
+              <h3 className="text-base font-extrabold font-heading text-slate-900 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-[#7256c3]" /> Deal Scanner
+              </h3>
+              {(searchQuery || selectedCategory !== 'All' || selectedStore !== 'All') && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setStatusFilters({ new: true, on_progress: true, ready_to_serve: true, cancelled: false });
-                    setSearchQuery('');
-                    setFilterByRadio('recent');
-                  }}
+                  onClick={() => { setSelectedCategory('All'); setSelectedStore('All'); setSearchQuery(''); }}
                   className="text-xs font-bold text-[#7256c3] hover:underline cursor-pointer"
                 >
                   Reset
@@ -576,396 +368,352 @@ export function DashboardView({ setActiveTab }) {
             </div>
 
             {/* Keyword Search */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search deals, products, tech..."
+                className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-[#f8f7ff] border border-[#e6e2f8] text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7256c3]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Category Selectors */}
             <div className="space-y-2">
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search guest or item..."
-                  className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-[#f8f7ff] border border-[#e6e2f8] text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7256c3]"
-                />
-                {searchQuery && (
+              <span className="text-xs font-bold text-slate-500 uppercase font-mono block">Categories</span>
+              <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
+                {['All', 'Audio', 'Laptops', 'Footwear', 'Wearables'].map((cat) => (
                   <button
+                    key={cat}
                     type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                      selectedCategory === cat
+                        ? 'bg-[#7256c3] text-white shadow-xs'
+                        : 'bg-[#f8f7ff] text-slate-600 hover:bg-slate-100 border border-[#e6e2f8]'
+                    }`}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    {cat}
                   </button>
-                )}
-              </div>
-            </div>
-
-            {/* Section 1: Order status (Checkboxes from Inntegrate) */}
-            <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-600 block">Order status</span>
-              
-              <div className="space-y-2.5 text-xs font-medium text-slate-700">
-                
-                {/* Checkbox: New */}
-                <label className="flex items-center gap-3 cursor-pointer group select-none">
-                  <div className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
-                    statusFilters.new ? 'bg-[#1e1b4b] text-white' : 'border border-slate-300 bg-white'
-                  }`}>
-                    {statusFilters.new && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={statusFilters.new}
-                    onChange={() => handleToggleStatus('new')}
-                    className="sr-only"
-                  />
-                  <span className="font-semibold text-slate-800 group-hover:text-slate-900">New</span>
-                </label>
-
-                {/* Checkbox: On progress */}
-                <label className="flex items-center gap-3 cursor-pointer group select-none">
-                  <div className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
-                    statusFilters.on_progress ? 'bg-[#1e1b4b] text-white' : 'border border-slate-300 bg-white'
-                  }`}>
-                    {statusFilters.on_progress && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={statusFilters.on_progress}
-                    onChange={() => handleToggleStatus('on_progress')}
-                    className="sr-only"
-                  />
-                  <span className="font-semibold text-slate-800 group-hover:text-slate-900">On progress</span>
-                </label>
-
-                {/* Checkbox: Ready to serve */}
-                <label className="flex items-center gap-3 cursor-pointer group select-none">
-                  <div className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
-                    statusFilters.ready_to_serve ? 'bg-[#1e1b4b] text-white' : 'border border-slate-300 bg-white'
-                  }`}>
-                    {statusFilters.ready_to_serve && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={statusFilters.ready_to_serve}
-                    onChange={() => handleToggleStatus('ready_to_serve')}
-                    className="sr-only"
-                  />
-                  <span className="font-semibold text-slate-800 group-hover:text-slate-900">Ready to serve</span>
-                </label>
-
-                {/* Checkbox: Cancelled */}
-                <label className="flex items-center gap-3 cursor-pointer group select-none">
-                  <div className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
-                    statusFilters.cancelled ? 'bg-[#1e1b4b] text-white' : 'border border-slate-300 bg-white'
-                  }`}>
-                    {statusFilters.cancelled && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={statusFilters.cancelled}
-                    onChange={() => handleToggleStatus('cancelled')}
-                    className="sr-only"
-                  />
-                  <span className="font-semibold text-slate-800 group-hover:text-slate-900">Cancelled</span>
-                </label>
-
-              </div>
-            </div>
-
-            {/* Section 2: Filter by (Radio Buttons from Inntegrate) */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <span className="text-xs font-bold text-slate-600 block">Filter by</span>
-              
-              <div className="space-y-2 text-xs font-medium text-slate-700">
-                {[
-                  { id: 'recent', label: 'Recent orders' },
-                  { id: 'last_hour', label: 'Last hour' },
-                  { id: 'today', label: 'Today' },
-                  { id: 'custom', label: 'Custom date' }
-                ].map((opt) => (
-                  <label key={opt.id} className="flex items-center gap-3 cursor-pointer group select-none">
-                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                      filterByRadio === opt.id ? 'border-[#1e1b4b] bg-white' : 'border-slate-300 bg-white'
-                    }`}>
-                      {filterByRadio === opt.id && (
-                        <div className="w-2 h-2 rounded-full bg-[#1e1b4b]" />
-                      )}
-                    </div>
-                    <input
-                      type="radio"
-                      name="filterBy"
-                      value={opt.id}
-                      checked={filterByRadio === opt.id}
-                      onChange={() => setFilterByRadio(opt.id)}
-                      className="sr-only"
-                    />
-                    <span className={`font-semibold ${filterByRadio === opt.id ? 'text-slate-900' : 'text-slate-600 group-hover:text-slate-900'}`}>
-                      {opt.label}
-                    </span>
-                  </label>
                 ))}
               </div>
             </div>
 
-            {/* Section 3: Card view toggle switch */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700">Card view</span>
-              <button
-                type="button"
-                onClick={() => setCardViewToggle(!cardViewToggle)}
-                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                  cardViewToggle ? 'bg-[#7256c3]' : 'bg-slate-300'
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded-full bg-white shadow-xs transition-transform absolute top-0.5 ${
-                    cardViewToggle ? 'translate-x-5.5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
+            {/* Merchant Stores */}
+            <div className="space-y-2 pt-3 border-t border-slate-100">
+              <span className="text-xs font-bold text-slate-500 uppercase font-mono block">Stores</span>
+              <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
+                {['All', 'Amazon.in', 'Croma', 'Myntra'].map((store) => (
+                  <button
+                    key={store}
+                    type="button"
+                    onClick={() => setSelectedStore(store)}
+                    className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                      selectedStore === store
+                        ? 'bg-[#1e1b4b] text-white shadow-xs'
+                        : 'bg-[#f8f7ff] text-slate-600 hover:bg-slate-100 border border-[#e6e2f8]'
+                    }`}
+                  >
+                    {store}
+                  </button>
+                ))}
+              </div>
             </div>
 
           </div>
 
-          {/* Core Platform Guarantees matching Landing Page Promises */}
+          {/* Landing Page Guarantees Banner */}
           <div className="bg-[#f8f7ff] rounded-3xl p-5 border border-[#e6e2f8] space-y-3">
             <span className="text-[11px] font-extrabold font-mono text-[#7256c3] uppercase tracking-wider flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#7256c3]" />
-              Landing Page Guarantees
+              PingX Platform Promises
             </span>
             <ul className="space-y-2 text-xs text-slate-600">
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                <span>Multi-Merchant API Price Scanner (Amazon, Flipkart, Croma, Myntra)</span>
+                <span>Multi-Merchant Live Scanner (Amazon, Flipkart, Croma, Myntra)</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                <span>Lossless 48kHz Encrypted Audio Messaging</span>
+                <span>Lossless 48kHz AAC Encrypted Voice Notes</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                <span>Zero tracking, zero ads, 100% private data preservation</span>
+                <span>Zero Ads, Zero Markups, Direct Retailer Links</span>
               </li>
             </ul>
           </div>
 
         </div>
 
-        {/* Central Matrix Grid of Order Cards */}
-        <div className="lg:col-span-8 xl:col-span-9 space-y-4">
+        {/* Central Instagram-Style Commerce & Social Feed */}
+        <div className="lg:col-span-8 xl:col-span-8 space-y-6">
           
-          {filteredOrders.length === 0 ? (
+          {filteredFeed.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-[#e6e2f8] space-y-3">
-              <p className="text-slate-500 text-sm">No orders or deals match the current filter selection.</p>
+              <p className="text-slate-500 text-sm">No deals found matching your selected filters.</p>
               <button
                 type="button"
-                onClick={() => {
-                  setStatusFilters({ new: true, on_progress: true, ready_to_serve: true, cancelled: false });
-                  setSearchQuery('');
-                }}
-                className="px-4 py-2 rounded-xl bg-[#7256c3] text-white text-xs font-bold cursor-pointer hover:bg-[#6245b5] transition-colors"
+                onClick={() => { setSelectedCategory('All'); setSelectedStore('All'); setSearchQuery(''); }}
+                className="px-4 py-2 rounded-xl bg-[#7256c3] text-white text-xs font-bold cursor-pointer hover:bg-[#6245b5]"
               >
-                Reset Filters
+                Clear Filters
               </button>
             </div>
           ) : (
-            <div className={cardViewToggle ? 'grid grid-cols-1 md:grid-cols-2 gap-5' : 'space-y-3'}>
-              {filteredOrders.map((order, idx) => {
-                const isPlaying = playingAudioId === order.id;
+            filteredFeed.map((post) => {
+              const isLiked = !!likedPosts[post.id];
+              const isPlaying = playingAudioId === post.id;
 
-                // Status pill badge color
-                const getStatusBadge = () => {
-                  switch (order.status) {
-                    case 'new':
-                      return (
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-violet-100 text-[#7256c3]">
-                          {order.statusLabel}
-                        </span>
-                      );
-                    case 'on_progress':
-                      return (
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
-                          {order.statusLabel}
-                        </span>
-                      );
-                    case 'ready_to_serve':
-                      return (
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-                          {order.statusLabel}
-                        </span>
-                      );
-                    case 'cancelled':
-                      return (
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
-                          {order.statusLabel}
-                        </span>
-                      );
-                    default:
-                      return null;
-                  }
-                };
-
-                return (
-                  <motion.div
-                    key={order.id}
-                    layout
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, delay: idx * 0.04 }}
-                    className={`bg-white rounded-3xl p-5 border flex flex-col justify-between space-y-4 transition-all ${
-                      order.isElevatedFeatured
-                        ? 'border-violet-300 shadow-xl ring-2 ring-[#7256c3]/15 transform -translate-y-1'
-                        : 'border-[#e6e2f8] shadow-xs hover:shadow-md'
-                    }`}
-                  >
-                    
-                    <div className="space-y-4">
-                      
-                      {/* Top Header: Avatar + Customer Name + Order # + Status Pill */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={order.avatar}
-                            alt={order.customerName}
-                            className="w-10 h-10 rounded-full object-cover border border-[#e6e2f8] bg-slate-100 shrink-0"
-                          />
-                          <div>
-                            <h4 className="text-sm font-bold text-slate-900 leading-tight">
-                              {order.customerName}
-                            </h4>
-                            <span className="text-xs text-slate-400 font-medium">
-                              Order {order.orderNumber}
+              return (
+                <div
+                  key={post.id}
+                  className="bg-white rounded-3xl border border-[#e6e2f8] shadow-xs overflow-hidden space-y-4 transition-all hover:shadow-md"
+                >
+                  
+                  {/* Post Header: Creator Avatar + Name + Timestamp + Options */}
+                  <div className="p-4 sm:p-5 flex items-center justify-between border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={post.author.avatar}
+                        alt={post.author.name}
+                        className="w-10 h-10 rounded-full object-cover border border-[#e6e2f8] bg-slate-50"
+                      />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                            {post.author.name}
+                          </h4>
+                          {post.author.isVerified && (
+                            <span className="w-3.5 h-3.5 rounded-full bg-sky-500 text-white flex items-center justify-center text-[9px] font-bold">
+                              ✓
                             </span>
-                          </div>
+                          )}
+                          <span className="text-[10px] text-slate-400 font-mono">• {post.timeAgo}</span>
                         </div>
-
-                        {/* Status Badge */}
-                        <div className="shrink-0">
-                          {getStatusBadge()}
-                        </div>
+                        <span className="text-[10px] text-slate-500 font-medium">{post.author.badge}</span>
                       </div>
-
-                      {/* Sub-Metadata Row: Room Number & Total Payment */}
-                      <div className="grid grid-cols-2 gap-4 p-3 rounded-2xl bg-[#f8f7ff] border border-[#e6e2f8] text-xs">
-                        <div>
-                          <span className="text-[11px] text-slate-500 font-medium block">Room number</span>
-                          <span className="font-bold text-slate-900 font-heading">{order.roomNumber}</span>
-                        </div>
-                        <div>
-                          <span className="text-[11px] text-slate-500 font-medium block">Total payment</span>
-                          <span className="font-bold text-slate-900 font-heading">{order.totalPayment}</span>
-                        </div>
-                      </div>
-
-                      {/* Ordered Items List with small thumbnails */}
-                      <div className="space-y-2.5">
-                        {order.items.map((item, iIdx) => (
-                          <div key={iIdx} className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0 bg-slate-50"
-                              />
-                              <div className="min-w-0">
-                                <p className="font-bold text-slate-900 truncate leading-snug">{item.name}</p>
-                                <span className="text-[11px] text-slate-400 font-medium">{item.price}</span>
-                              </div>
-                            </div>
-                            <span className="font-bold text-slate-700 text-xs shrink-0">{item.qty}</span>
-                          </div>
-                        ))}
-
-                        {/* +X more items expander trigger */}
-                        {order.moreItemsCount > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setInspectedOrder(order)}
-                            className="text-[11px] font-bold text-slate-400 hover:text-[#7256c3] cursor-pointer transition-colors block text-right w-full"
-                          >
-                            +{order.moreItemsCount} more items
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Lossless Voice Note Waveform Player if present (Raman Raj promise) */}
-                      {order.isAudioNote && (
-                        <div className="p-3 rounded-2xl bg-violet-50 border border-violet-200 space-y-2 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-[#7256c3] flex items-center gap-1.5">
-                              <Volume2 className="w-3.5 h-3.5" />
-                              48kHz Lossless Voice Note
-                            </span>
-                            <span className="text-[10px] font-mono text-slate-500 font-bold">
-                              {isPlaying ? '0:14 / 0:34' : order.audioDuration}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2.5">
-                            <button
-                              type="button"
-                              onClick={() => togglePlayAudio(order.id)}
-                              className="w-8 h-8 rounded-full bg-[#7256c3] text-white flex items-center justify-center cursor-pointer shadow-xs hover:scale-105 transition-transform shrink-0"
-                            >
-                              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
-                            </button>
-
-                            {/* Animated sound wave frequency bars */}
-                            <div className="flex-1 flex items-center gap-1 h-7 px-2 bg-white rounded-xl border border-violet-200">
-                              {[35, 75, 40, 95, 60, 85, 45, 100, 65, 30, 80, 50, 90, 40, 70, 55, 85, 30].map((h, bIdx) => (
-                                <div
-                                  key={bIdx}
-                                  className={`w-1 rounded-full transition-all duration-200 ${
-                                    isPlaying ? 'bg-[#7256c3] animate-pulse' : 'bg-slate-300'
-                                  }`}
-                                  style={{
-                                    height: isPlaying ? `${Math.max(25, (h * Math.random()).toFixed(0))}%` : `${h}%`,
-                                    transitionDelay: `${bIdx * 15}ms`
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Order Notes Section */}
-                      <div className="space-y-1">
-                        <span className="text-[11px] font-semibold text-slate-400 block">Order Notes</span>
-                        <p className="text-xs text-slate-700 font-medium leading-relaxed">
-                          {order.orderNotes}
-                        </p>
-                      </div>
-
                     </div>
 
-                    {/* Bottom CTA Button: Order details ↗ (Matching Inntegrate pill CTA) */}
-                    <div className="pt-2">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-violet-100 text-[#7256c3] border border-violet-200">
+                      {post.category}
+                    </span>
+                  </div>
+
+                  {/* Post Photo (High-Resolution Original Tech Asset) */}
+                  <div 
+                    onClick={() => setInspectedPost(post)}
+                    className="relative aspect-16/10 cursor-pointer overflow-hidden bg-slate-50 group"
+                  >
+                    <img
+                      src={post.image}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+
+                    {/* Price Discount Pill Badge */}
+                    <div className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md shadow-md text-xs font-extrabold text-slate-900">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Lowest on {post.lowestMerchant}: ₹{post.currentPrice.toLocaleString()}
+                    </div>
+
+                    <div className="absolute top-4 right-4 px-2.5 py-1 rounded-full bg-[#7256c3] text-white text-[11px] font-black font-mono shadow-md">
+                      {post.discount}
+                    </div>
+                  </div>
+
+                  {/* Post Actions Row (Instagram-Style Like, Comment, Share, Add to Cart) */}
+                  <div className="px-5 pt-1 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
                       <button
                         type="button"
-                        onClick={() => setInspectedOrder(order)}
-                        className={`w-full py-2.5 px-4 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs ${
-                          order.isElevatedFeatured
-                            ? 'bg-[#1e1b4b] hover:bg-[#2d2870] text-white shadow-md'
-                            : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 hover:border-[#7256c3]'
-                        }`}
+                        onClick={() => toggleLike(post.id)}
+                        className="flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-colors"
                       >
-                        Order details <ArrowUpRight className="w-3.5 h-3.5" />
+                        <Heart className={`w-5 h-5 transition-transform active:scale-125 ${isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-600 hover:text-rose-500'}`} />
+                        <span className={isLiked ? 'text-rose-600' : 'text-slate-600'}>
+                          {post.likesCount + (isLiked ? 1 : 0)}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInspectedPost(post)}
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                      >
+                        <MessageSquare className="w-5 h-5" />
+                        <span>{post.commentsCount}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (navigator.share) {
+                            navigator.share({ title: post.title, url: window.location.href });
+                          } else {
+                            addToast('Link Copied', 'Deal link copied to clipboard', 'success', 2000);
+                          }
+                        }}
+                        className="text-slate-600 hover:text-slate-900 cursor-pointer"
+                      >
+                        <Share2 className="w-5 h-5" />
                       </button>
                     </div>
 
-                  </motion.div>
-                );
-              })}
-            </div>
+                    {/* Dual Action: Add to Cart & Buy Direct */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          addToCart({
+                            id: post.id,
+                            title: post.title,
+                            price: post.currentPrice,
+                            originalPrice: post.originalPrice,
+                            image: post.image,
+                            merchant: post.lowestMerchant,
+                            url: post.lowestUrl
+                          });
+                          addToast('Added to Smart Cart', `${post.title} added at ₹${post.currentPrice.toLocaleString()}`, 'success', 2500);
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-violet-100 text-[#7256c3] hover:bg-violet-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        Add to Cart
+                      </button>
+
+                      <a
+                        href={post.lowestUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#7256c3] hover:bg-[#6245b5] text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                      >
+                        Buy on {post.lowestMerchant} <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Post Content & Title */}
+                  <div className="px-5 space-y-3 pb-5">
+                    <div>
+                      <h3 
+                        onClick={() => setInspectedPost(post)}
+                        className="text-sm sm:text-base font-bold text-slate-900 leading-snug cursor-pointer hover:text-[#7256c3] transition-colors"
+                      >
+                        {post.title}
+                      </h3>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-lg font-black font-mono text-[#7256c3]">
+                          ₹{post.currentPrice.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-slate-400 line-through font-mono">
+                          ₹{post.originalPrice.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                          {post.discount}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Lossless Voice Note Waveform Player (Raman Raj promise) */}
+                    {post.isAudioNote && (
+                      <div className="p-3.5 rounded-2xl bg-violet-50 border border-violet-200 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-[#7256c3] flex items-center gap-1.5">
+                            <Volume2 className="w-4 h-4" />
+                            48kHz AAC Lossless Voice Note
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-500 font-bold">
+                            {isPlaying ? '0:14 / 0:34' : post.audioDuration}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => togglePlayAudio(post.id)}
+                            className="w-9 h-9 rounded-full bg-[#7256c3] text-white flex items-center justify-center cursor-pointer shadow-xs hover:scale-105 transition-transform shrink-0"
+                          >
+                            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                          </button>
+
+                          <div className="flex-1 flex items-center gap-1 h-8 px-2 bg-white rounded-xl border border-violet-200">
+                            {[40, 75, 35, 95, 60, 85, 45, 100, 65, 30, 80, 50, 95, 40, 70, 55, 90, 35].map((h, bIdx) => (
+                              <div
+                                key={bIdx}
+                                className={`w-1 rounded-full transition-all duration-200 ${
+                                  isPlaying ? 'bg-[#7256c3] animate-pulse' : 'bg-slate-300'
+                                }`}
+                                style={{
+                                  height: isPlaying ? `${Math.max(25, (h * Math.random()).toFixed(0))}%` : `${h}%`,
+                                  transitionDelay: `${bIdx * 15}ms`
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-snug">{post.audioMessage}</p>
+                      </div>
+                    )}
+
+                    {/* AI 2-Bullet Summary if present */}
+                    {post.aiSummary && (
+                      <div className="p-3.5 rounded-2xl bg-[#f8f7ff] border border-[#e6e2f8] space-y-1.5 text-xs">
+                        <span className="text-[10px] font-extrabold text-[#7256c3] uppercase font-mono flex items-center gap-1">
+                          <Bot className="w-3.5 h-3.5" /> 2-Bullet Fact Summary
+                        </span>
+                        {post.aiSummary.map((bullet, bIdx) => (
+                          <div key={bIdx} className="flex items-start gap-2 text-slate-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7256c3] mt-1.5 shrink-0" />
+                            <p className="leading-relaxed">{bullet}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Cross-Store Price Verification Pill Matrix */}
+                    <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="text-[11px] font-semibold text-slate-400">Cross-Store Matrix:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {post.merchants.map((m, mIdx) => (
+                          <span
+                            key={mIdx}
+                            className={`px-2.5 py-1 rounded-lg font-mono text-[11px] border ${
+                              m.isLowest
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold'
+                                : 'bg-[#f8f7ff] text-slate-600 border-[#e6e2f8]'
+                            }`}
+                          >
+                            {m.name}: ₹{m.price.toLocaleString()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+
+                </div>
+              );
+            })
           )}
 
         </div>
 
       </div>
 
-      {/* ── Popping Order Details Modal (Exact Inntegrate Popping Card Inspection) ── */}
+      {/* ── Popping Product Details & Comparison Modal ── */}
       <AnimatePresence>
-        {inspectedOrder && (
+        {inspectedPost && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -974,175 +722,133 @@ export function DashboardView({ setActiveTab }) {
               transition={{ duration: 0.2 }}
               className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full border border-[#e6e2f8] shadow-2xl relative space-y-6 max-h-[90vh] overflow-y-auto text-slate-900"
             >
-              
               {/* Close Button */}
               <button
                 type="button"
-                onClick={() => setInspectedOrder(null)}
+                onClick={() => setInspectedPost(null)}
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center absolute top-6 right-6 cursor-pointer transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
 
-              {/* Modal Header */}
-              <div className="flex items-center gap-4 pr-10">
+              {/* Product Header */}
+              <div className="space-y-1 pr-8">
+                <span className="text-[10px] font-extrabold uppercase font-mono px-2.5 py-0.5 rounded-full bg-violet-100 text-[#7256c3]">
+                  {inspectedPost.category} • Multi-Store Verified
+                </span>
+                <h3 className="text-xl font-extrabold font-heading text-slate-900">
+                  {inspectedPost.title}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Posted by {inspectedPost.author.name} • {inspectedPost.timeAgo}
+                </p>
+              </div>
+
+              {/* Main Photo + Pricing */}
+              <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl bg-[#f8f7ff] border border-[#e6e2f8]">
                 <img
-                  src={inspectedOrder.avatar}
-                  alt={inspectedOrder.customerName}
-                  className="w-14 h-14 rounded-2xl object-cover border border-[#e6e2f8] bg-slate-100 shrink-0"
+                  src={inspectedPost.image}
+                  alt={inspectedPost.title}
+                  className="w-24 h-24 rounded-2xl object-cover border border-slate-200 bg-white shrink-0"
                 />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-extrabold font-heading text-slate-900 leading-tight">
-                      {inspectedOrder.customerName}
-                    </h3>
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-violet-100 text-[#7256c3]">
-                      Order {inspectedOrder.orderNumber}
+                <div className="space-y-1 flex-1 text-center sm:text-left">
+                  <span className="text-[11px] font-extrabold text-slate-500 font-mono uppercase">Lowest Verified Deal</span>
+                  <div className="flex items-center justify-center sm:justify-start gap-2">
+                    <span className="text-2xl font-black text-slate-900 font-mono">
+                      ₹{inspectedPost.currentPrice.toLocaleString()}
+                    </span>
+                    <span className="text-xs text-slate-400 line-through">
+                      ₹{inspectedPost.originalPrice.toLocaleString()}
+                    </span>
+                    <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                      {inspectedPost.discount}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    {inspectedOrder.channel} • Created {inspectedOrder.timeAgo}
-                  </p>
-                </div>
-              </div>
-
-              {/* Order Metadata Box */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-[#f8f7ff] border border-[#e6e2f8] text-xs">
-                <div>
-                  <span className="text-[11px] text-slate-500 font-medium block">Room Number</span>
-                  <span className="font-bold text-slate-900">{inspectedOrder.roomNumber}</span>
-                </div>
-                <div>
-                  <span className="text-[11px] text-slate-500 font-medium block">Total Payment</span>
-                  <span className="font-bold text-slate-900 font-mono">{inspectedOrder.totalPayment} ({inspectedOrder.totalPaymentRupees})</span>
-                </div>
-                <div>
-                  <span className="text-[11px] text-slate-500 font-medium block">Payment Status</span>
-                  <span className="font-bold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Verified Paid
+                  <span className="text-xs text-slate-600 block">
+                    Available on {inspectedPost.lowestMerchant} with direct zero-markup checkout.
                   </span>
                 </div>
               </div>
 
-              {/* Full Itemized Order List */}
-              <div className="space-y-3">
-                <span className="text-xs font-bold text-slate-500 uppercase font-mono block">
-                  Itemized Order Breakdown
+              {/* Cross-Store Table */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase font-mono text-slate-500 block">
+                  Cross-Store Live Price Comparison
                 </span>
-
                 <div className="border border-[#e6e2f8] rounded-2xl overflow-hidden divide-y divide-[#e6e2f8] text-xs">
-                  {/* Primary Items */}
-                  {inspectedOrder.items.map((item, idx) => (
-                    <div key={idx} className="p-3 bg-white flex items-center justify-between">
+                  {inspectedPost.merchants.map((merchant, mIdx) => (
+                    <div key={mIdx} className="flex items-center justify-between p-3 bg-white hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900">{merchant.name}</span>
+                        {merchant.isLowest && (
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Cheapest Deal
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
-                        />
-                        <div>
-                          <p className="font-bold text-slate-900">{item.name}</p>
-                          <span className="text-[11px] text-slate-500">{item.price} each</span>
-                        </div>
+                        <span className="font-mono font-bold text-slate-900">
+                          ₹{merchant.price.toLocaleString()}
+                        </span>
+                        <a
+                          href={merchant.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 rounded-lg bg-violet-100 hover:bg-[#7256c3] hover:text-white transition-colors text-[11px] font-bold text-[#7256c3] flex items-center gap-1 cursor-pointer"
+                        >
+                          Visit Store <ExternalLink className="w-3 h-3" />
+                        </a>
                       </div>
-                      <span className="font-bold text-slate-900 font-mono px-3 py-1 rounded-lg bg-slate-50 border border-slate-200">
-                        {item.qty}
-                      </span>
-                    </div>
-                  ))}
-
-                  {/* Additional Items */}
-                  {inspectedOrder.moreItemsList?.map((item, idx) => (
-                    <div key={`more-${idx}`} className="p-3 bg-white flex items-center justify-between">
-                      <div className="flex items-center gap-3 pl-2">
-                        <span className="w-2 h-2 rounded-full bg-[#7256c3]" />
-                        <div>
-                          <p className="font-semibold text-slate-800">{item.name}</p>
-                          <span className="text-[11px] text-slate-400">{item.price}</span>
-                        </div>
-                      </div>
-                      <span className="font-bold text-slate-700 font-mono px-3 py-1 rounded-lg bg-slate-50 border border-slate-200">
-                        {item.qty}
-                      </span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Cross-Store Price Verification Table if tech deal */}
-              {inspectedOrder.dealDetails && (
-                <div className="space-y-3">
-                  <span className="text-xs font-bold text-slate-500 uppercase font-mono block">
-                    Cross-Store Live Verification ({inspectedOrder.dealDetails.store})
-                  </span>
-                  <div className="border border-[#e6e2f8] rounded-2xl overflow-hidden divide-y divide-[#e6e2f8] text-xs">
-                    {inspectedOrder.dealDetails.competitors.map((comp, cIdx) => (
-                      <div key={cIdx} className="flex items-center justify-between p-3 bg-white hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900">{comp.name}</span>
-                          {comp.isLowest && (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Lowest Price Verified
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono font-bold text-slate-900">
-                            ₹{comp.price.toLocaleString()}
-                          </span>
-                          <a
-                            href={comp.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1 rounded-lg bg-violet-100 hover:bg-[#7256c3] hover:text-white transition-colors text-[11px] font-bold text-[#7256c3] flex items-center gap-1 cursor-pointer"
-                          >
-                            Verify <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </div>
+              {/* Specs Breakdown */}
+              {inspectedPost.specs && (
+                <div className="space-y-2">
+                  <span className="text-xs font-bold uppercase font-mono text-slate-500 block">Hardware Specifications</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    {Object.entries(inspectedPost.specs).map(([specKey, specVal]) => (
+                      <div key={specKey} className="p-2.5 rounded-xl bg-[#f8f7ff] border border-[#e6e2f8]">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase font-mono">{specKey}</span>
+                        <span className="font-bold text-slate-800">{specVal}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Order Notes */}
-              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 space-y-1">
-                <span className="font-bold uppercase tracking-wider text-[10px] text-amber-700">Special Instructions / Notes:</span>
-                <p className="font-medium leading-relaxed">{inspectedOrder.orderNotes}</p>
-              </div>
-
               {/* Modal Actions */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
-                    addToast('Print Triggered', `Ticket for Order ${inspectedOrder.orderNumber} sent to kitchen printer`, 'success', 3000);
+                    addToCart({
+                      id: inspectedPost.id,
+                      title: inspectedPost.title,
+                      price: inspectedPost.currentPrice,
+                      originalPrice: inspectedPost.originalPrice,
+                      image: inspectedPost.image,
+                      merchant: inspectedPost.lowestMerchant,
+                      url: inspectedPost.lowestUrl
+                    });
+                    setInspectedPost(null);
+                    addToast('Added to Cart', `${inspectedPost.title} added to cart`, 'success', 2500);
                   }}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 hover:border-[#7256c3] bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-violet-100 hover:bg-violet-200 text-[#7256c3] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
-                  <Printer className="w-4 h-4 text-slate-500" /> Print Order Ticket
+                  <ShoppingBag className="w-4 h-4" /> Add to Cart
                 </button>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInspectedOrder(null);
-                      setActiveTab?.('chats');
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-violet-100 text-[#7256c3] hover:bg-violet-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
-                  >
-                    <MessageSquare className="w-4 h-4" /> Message Guest
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setInspectedOrder(null)}
-                    className="px-5 py-2.5 rounded-xl bg-[#1e1b4b] hover:bg-[#2d2870] text-white text-xs font-bold cursor-pointer transition-colors shadow-xs"
-                  >
-                    Done
-                  </button>
-                </div>
+                <a
+                  href={inspectedPost.lowestUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-2.5 rounded-xl bg-[#7256c3] hover:bg-[#6245b5] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                >
+                  Buy Direct on {inspectedPost.lowestMerchant} <ExternalLink className="w-3.5 h-3.5" />
+                </a>
               </div>
 
             </motion.div>

@@ -12,12 +12,81 @@ export function ShopProvider({ children, onAddPing }) {
   const [watchlist, setWatchlist] = useState(['prod_sony_xm5']);
   const [activeProductDetail, setActiveProductDetail] = useState(null);
 
+  // Shopping Cart State
+  const [cart, setCart] = useState([
+    {
+      id: 'cart-1',
+      productId: 'prod_sony_xm5',
+      title: 'Sony WH-1000XM5 Wireless ANC Headphones',
+      price: 26990,
+      originalPrice: 28990,
+      merchant: 'Amazon.in',
+      url: 'https://www.amazon.in',
+      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80',
+      quantity: 1
+    }
+  ]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
   // Dynamic Multi-Merchant Search & Price Matrix
   const filteredProducts = searchAndCompareProducts({
     query: searchQuery,
     category: selectedCategory,
     sortBy: sortBy
   });
+
+  const addToCart = (product, merchantOverride = null) => {
+    const title = product.title || product.name;
+    const price = merchantOverride?.price || product.bestPrice || product.price;
+    const merchant = merchantOverride?.name || merchantOverride?.marketplace || product.cheapestDeal?.marketplace || 'Amazon.in';
+    const url = merchantOverride?.url || product.cheapestDeal?.url || 'https://www.amazon.in';
+    const image = product.image || (product.images && product.images[0]);
+
+    setCart((prev) => {
+      const existing = prev.find((item) => item.productId === product.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: `cart-${Date.now()}`,
+          productId: product.id,
+          title,
+          price,
+          originalPrice: product.originalPrice || price * 1.2,
+          merchant,
+          url,
+          image,
+          quantity: 1
+        }
+      ];
+    });
+
+    setIsCartOpen(true);
+  };
+
+  const removeFromCart = (cartItemId) => {
+    setCart((prev) => prev.filter((item) => item.id !== cartItemId && item.productId !== cartItemId));
+  };
+
+  const updateCartQty = (cartItemId, newQty) => {
+    if (newQty <= 0) {
+      removeFromCart(cartItemId);
+      return;
+    }
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === cartItemId || item.productId === cartItemId ? { ...item, quantity: newQty } : item
+      )
+    );
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
 
   const addToComparison = (product) => {
     if (comparisonList.some((item) => item.id === product.id)) return;
@@ -80,7 +149,14 @@ export function ShopProvider({ children, onAddPing }) {
       watchlist,
       toggleWatchlist,
       activeProductDetail,
-      setActiveProductDetail
+      setActiveProductDetail,
+      cart,
+      addToCart,
+      removeFromCart,
+      updateCartQty,
+      clearCart,
+      isCartOpen,
+      setIsCartOpen
     }}>
       {children}
     </ShopContext.Provider>

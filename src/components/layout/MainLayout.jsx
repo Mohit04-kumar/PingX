@@ -7,7 +7,11 @@ import { AIPopupPanel } from '../ai/AIPopupPanel';
 import { ToastContainer } from '../common/ToastContainer';
 
 export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, children }) {
+  // Mobile drawer toggle
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Desktop sidebar expand/collapse state: false by default for shorter icon-only mode
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   const handleCommandNavigate = (tab, itemId) => {
@@ -23,11 +27,13 @@ export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, child
         setActiveTab={setActiveTab}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
+        isExpanded={isSidebarExpanded}
+        setIsExpanded={setIsSidebarExpanded}
         onNavigateToLanding={onNavigateToLanding}
       />
 
-      {/* Main Content Area */}
-      <div className="lg:pl-64 flex-1 flex flex-col transition-all duration-300">
+      {/* Main Content Area: dynamically adjusts left padding based on sidebar expansion */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarExpanded ? 'lg:pl-64' : 'lg:pl-20'}`}>
         
         {/* Top Header */}
         <TopHeader
@@ -35,6 +41,8 @@ export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, child
           setActiveTab={setActiveTab}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          isSidebarExpanded={isSidebarExpanded}
+          onToggleSidebarExpand={() => setIsSidebarExpanded(!isSidebarExpanded)}
           onNavigateToLanding={onNavigateToLanding}
         />
 

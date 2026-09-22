@@ -27,7 +27,9 @@ export function ShopView() {
     comparisonList,
     setCompareModalOpen,
     watchlist,
-    toggleWatchlist
+    toggleWatchlist,
+    cart,
+    setIsCartOpen
   } = useShop();
 
   const [selectedProductModal, setSelectedProductModal] = useState(null);
@@ -71,30 +73,31 @@ export function ShopView() {
       
       {/* Theme-Adaptive Multi-Merchant Storefront Banner */}
       <div 
-        className="rounded-3xl p-6 sm:p-8 border space-y-6 shadow-sm relative transition-all"
-        style={{
-          backgroundColor: 'var(--bg-card)',
-          borderColor: 'var(--border)',
-          color: 'var(--text-primary)'
-        }}
+        className="rounded-3xl p-6 sm:p-8 border space-y-6 shadow-sm relative transition-all bg-white border-[#e6e2f8] text-slate-900"
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <span 
-              className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 font-mono"
-              style={{ color: 'var(--accent)' }}
+              className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 font-mono text-[#7256c3]"
             >
               <ShoppingBag className="w-4 h-4" /> AI Product Comparison & Multi-Merchant Storefront
             </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading text-slate-900">
               Amazon, Flipkart, Croma & Myntra Price Matrix
             </h2>
-            <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-500">
               Aggregated real-time prices across Indian e-commerce merchants with verified cheapest deals & direct buy links.
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 bg-[#7256c3] text-white shadow-xs hover:bg-[#6245b5] transition-all cursor-pointer"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Smart Cart ({cart?.length || 0})</span>
+            </button>
             <a
               href="https://www.amazon.in"
               target="_blank"

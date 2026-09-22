@@ -37,6 +37,7 @@ import { AIView } from './components/ai/AIView';
 import { FloatingAIBubble } from './components/ai/FloatingAIBubble';
 import { AIPopupPanel } from './components/ai/AIPopupPanel';
 import { ToastContainer } from './components/common/ToastContainer';
+import { CartDrawer } from './components/shop/CartDrawer';
 import { useAuth } from './context/AuthContext';
 
 function AppContent() {
@@ -142,6 +143,7 @@ function AppContent() {
       <FloatingAIBubble />
       <AIPopupPanel />
       <ToastContainer />
+      <CartDrawer />
     </AIContextContainer>
   );
 }

@@ -4,7 +4,15 @@ import { usePings } from '../../context/PingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { UserAccountAvatar } from '../smoothui/user-account-avatar/UserAccountAvatar';
 
-export function TopHeader({ activeTab, setActiveTab, onOpenCommandPalette, onToggleSidebar, onNavigateToLanding }) {
+export function TopHeader({ 
+  activeTab, 
+  setActiveTab, 
+  onOpenCommandPalette, 
+  onToggleSidebar, 
+  isSidebarExpanded, 
+  onToggleSidebarExpand, 
+  onNavigateToLanding 
+}) {
   const { unreadCount, pings, markAsRead, markAllAsRead } = usePings();
   const { user, isGuest, guestSecondsLeft, openAuthModal, updateProfile } = useAuth();
 
@@ -38,17 +46,24 @@ export function TopHeader({ activeTab, setActiveTab, onOpenCommandPalette, onTog
 
   return (
     <header
-      className="sticky top-0 z-30 h-16 px-4 sm:px-6 flex items-center justify-between border-b shadow-xs"
-      style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
+      className="sticky top-0 z-30 h-16 px-4 sm:px-6 flex items-center justify-between border-b shadow-xs bg-white border-[#e6e2f8]"
     >
       {/* Left Breadcrumb & Title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden p-2 rounded-xl cursor-pointer"
-          style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-elevated)' }}
+          className="lg:hidden p-2 rounded-xl cursor-pointer text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+          title="Toggle Mobile Menu"
         >
           <Menu className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={onToggleSidebarExpand}
+          className="hidden lg:flex p-2 rounded-xl cursor-pointer text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-[#e6e2f8] transition-colors"
+          title={isSidebarExpanded ? "Collapse Sidebar to Icons" : "Expand Sidebar"}
+        >
+          <Menu className="w-4 h-4 text-slate-600" />
         </button>
 
         <div className="flex items-center gap-2">

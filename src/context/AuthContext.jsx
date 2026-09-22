@@ -37,10 +37,16 @@ const safeStorage = {
 export function AuthProvider({ children }) {
   const [accounts, setAccounts] = useState(() => {
     const saved = safeStorage.getItem(STORAGE_KEY, []);
-    // Filter out old demo seed accounts if present
-    return Array.isArray(saved)
-      ? saved.filter((a) => !['user_1', 'user_2', 'user_3'].includes(a.id) && a.email !== 'rahul@example.com')
+    const clean = Array.isArray(saved)
+      ? saved.filter((a) => !['user_1', 'user_2'].includes(a.id) && a.email !== 'rahul@example.com')
       : [];
+    MOCK_USERS.forEach((mu) => {
+      if (!clean.some((c) => c.id === mu.id || c.email === mu.email || c.username === mu.username)) {
+        clean.push(mu);
+      }
+    });
+    safeStorage.setItem(STORAGE_KEY, clean);
+    return clean;
   });
 
   const [friendRequests, setFriendRequests] = useState(() =>
@@ -306,7 +312,7 @@ export function AuthProvider({ children }) {
     if (!lower) return accounts.filter((account) => account.id !== user?.id);
     return accounts.filter((account) => {
       if (account.id === user?.id) return false;
-      const searchTarget = `${account.name} ${account.username} ${account.email} ${account.bio || ''}`.toLowerCase();
+      const searchTarget = `${account.name} ${account.username} ${account.email} ${account.phone || ''} ${account.bio || ''}`.toLowerCase();
       return searchTarget.includes(lower);
     });
   };
