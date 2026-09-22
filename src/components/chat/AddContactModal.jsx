@@ -52,10 +52,7 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
         if (res && res.success) {
           setActionSuccess(`Accepted request from ${sender?.name || 'User'}! Chat unlocked.`);
           addToast('Request Accepted', `You are now friends with ${sender?.name || 'User'}`, 'success', 3500);
-          // If server returned a chat, open it
           if (res.chat && typeof onSave === 'function') {
-            // open or create local chat for server chat
-            // `onSave` is expected to open a chat when passed a user-like object; call it first
             onSave({
               name: sender.name,
               username: sender.username,
@@ -64,7 +61,6 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
               avatar: sender.avatar,
               bio: sender.bio
             });
-            // then dispatch a custom event so ChatContext can pick up and set active chat
             window.dispatchEvent(new CustomEvent('pingx:openServerChat', { detail: res.chat }));
           } else {
             if (sender && onSave) {
@@ -100,42 +96,42 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-[#1e2353] w-full max-w-md rounded-3xl p-6 sm:p-8 border border-[#5865f2]/40 shadow-2xl relative space-y-5 text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-8 border border-[#e6e2f8] shadow-2xl relative space-y-5 text-slate-900">
         
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#0a0d3a] border border-[#5865f2]/30 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer"
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 border border-[#e6e2f8] flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-[#5865f2]/20 pb-4">
-          <div className="w-10 h-10 rounded-2xl bg-[#5865f2] text-white flex items-center justify-center font-black shadow-lg">
+        <div className="flex items-center gap-3 border-b border-[#e6e2f8] pb-4">
+          <div className="w-10 h-10 rounded-2xl bg-violet-100 text-[#7256c3] flex items-center justify-center font-black shadow-xs">
             <UserPlus className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-black font-heading uppercase text-white">User Search & Requests</h3>
-            <p className="text-xs text-gray-300 font-medium">Search registered users & manage friend requests</p>
+            <h3 className="text-lg font-extrabold font-heading text-slate-900">User Search & Requests</h3>
+            <p className="text-xs text-slate-500 font-medium">Search registered users & manage friend requests</p>
           </div>
         </div>
 
         {/* Sub-Tabs Selector */}
-        <div className="flex bg-[#0a0d3a] p-1 rounded-xl text-xs font-bold border border-[#5865f2]/30">
+        <div className="flex bg-[#f8f7ff] p-1 rounded-xl text-xs font-bold border border-[#e6e2f8]">
           <button
             onClick={() => setActiveTab('search')}
             className={`flex-1 py-2 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'search' ? 'bg-[#5865f2] text-white shadow-md' : 'text-gray-400 hover:text-white'
+              activeTab === 'search' ? 'bg-[#7256c3] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            🔍 Search Registered Users
+            🔍 Search Users
           </button>
           <button
             onClick={() => setActiveTab('requests')}
             className={`flex-1 py-2 rounded-lg transition-all cursor-pointer relative ${
-              activeTab === 'requests' ? 'bg-[#5865f2] text-white shadow-md' : 'text-gray-400 hover:text-white'
+              activeTab === 'requests' ? 'bg-[#7256c3] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             🔔 Requests ({incomingRequests.length})
@@ -144,7 +140,7 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
 
         {/* Action Status Notice */}
         {actionSuccess && (
-          <div className="bg-[#35ed7e]/20 border border-[#35ed7e]/40 p-2.5 rounded-xl text-center text-[#35ed7e] font-black text-xs flex items-center justify-center gap-2 animate-fadeIn">
+          <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-center text-emerald-700 font-bold text-xs flex items-center justify-center gap-2 animate-fadeIn">
             <CheckCircle2 className="w-4 h-4" /> {actionSuccess}
           </div>
         )}
@@ -153,13 +149,13 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
           <div className="space-y-4">
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-4 h-4 text-[#5865f2] absolute left-3.5 top-3" />
+              <Search className="w-4 h-4 text-[#7256c3] absolute left-3.5 top-3" />
               <input
                 type="text"
                 value={searchHandle}
                 onChange={(e) => setSearchHandle(e.target.value)}
                 placeholder="Search by name or @username..."
-                className="w-full bg-[#0a0d3a] rounded-2xl border border-[#5865f2]/30 pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-400 outline-none font-bold focus:border-[#5865f2]"
+                className="w-full bg-[#f8f7ff] rounded-2xl border border-[#e6e2f8] pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none font-bold focus:border-[#7256c3]"
                 autoFocus
               />
             </div>
@@ -167,7 +163,7 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
             {/* Registered Users Search Results */}
             <div className="max-h-60 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
               {searchResults.length === 0 ? (
-                <div className="text-center py-6 text-xs text-gray-400">
+                <div className="text-center py-6 text-xs text-slate-400">
                   No registered users match "{searchHandle}".
                 </div>
               ) : (
@@ -183,32 +179,34 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
                   return (
                     <div
                       key={u.id}
-                      className="bg-[#0a0d3a] p-3 rounded-2xl border border-[#5865f2]/20 flex items-center justify-between"
+                      className="bg-white p-3 rounded-2xl border border-[#e6e2f8] hover:border-violet-200 transition-colors flex items-center justify-between shadow-2xs"
                     >
                       <div className="flex items-center gap-3">
-                        <img src={u.avatar} alt={u.name} className="w-9 h-9 rounded-full object-cover border border-[#5865f2]" />
+                        <img src={u.avatar} alt={u.name} className="w-9 h-9 rounded-full object-cover border border-[#e6e2f8]" />
                         <div>
-                          <p className="text-xs font-bold text-white leading-tight">{u.name}</p>
-                          <p className="text-[10px] text-[#35ed7e] font-mono">@{u.username}</p>
+                          <p className="text-xs font-bold text-slate-900 leading-tight">{u.name}</p>
+                          <p className="text-[10px] text-[#7256c3] font-mono">@{u.username}</p>
                         </div>
                       </div>
 
                       {isAccepted ? (
-                        <span className="text-[10px] font-black text-[#35ed7e] bg-[#35ed7e]/20 px-2.5 py-1 rounded-xl">
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl">
                           Friends ✓
                         </span>
                       ) : isPending ? (
-                        <span className="text-[10px] font-bold text-amber-400 bg-amber-400/20 px-2.5 py-1 rounded-xl flex items-center gap-1">
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
                           <Clock className="w-3 h-3" /> Pending
                         </span>
                       ) : (
-                            <button
-                              onClick={() => handleSendRequest(u)}
-                              disabled={loadingIds[u.id]}
-                              className={`px-3 py-1.5 rounded-xl text-[11px] font-black cursor-pointer shadow-md ${loadingIds[u.id] ? 'opacity-60 cursor-wait' : 'btn-discord-green'}`}
-                            >
-                              {loadingIds[u.id] ? 'Sending...' : 'Send Request'}
-                            </button>
+                        <button
+                          onClick={() => handleSendRequest(u)}
+                          disabled={loadingIds[u.id]}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all shadow-xs ${
+                            loadingIds[u.id] ? 'opacity-60 cursor-wait bg-slate-200 text-slate-500' : 'bg-[#7256c3] text-white hover:bg-[#6245b5]'
+                          }`}
+                        >
+                          {loadingIds[u.id] ? 'Sending...' : 'Send Request'}
+                        </button>
                       )}
                     </div>
                   );
@@ -218,10 +216,10 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
           </div>
         ) : (
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-gray-300">Incoming Friend Requests</h4>
+            <h4 className="text-xs font-bold text-slate-600">Incoming Friend Requests</h4>
             <div className="max-h-60 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
               {incomingRequests.length === 0 ? (
-                <div className="text-center py-8 text-xs text-gray-400">
+                <div className="text-center py-8 text-xs text-slate-400">
                   No pending friend requests.
                 </div>
               ) : (
@@ -231,26 +229,26 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
                   return (
                     <div
                       key={req.id}
-                      className="bg-[#0a0d3a] p-3 rounded-2xl border border-[#5865f2]/30 flex items-center justify-between"
+                      className="bg-white p-3 rounded-2xl border border-[#e6e2f8] flex items-center justify-between shadow-2xs"
                     >
                       <div className="flex items-center gap-3">
-                        <img src={sender.avatar} alt={sender.name} className="w-9 h-9 rounded-full object-cover border border-[#5865f2]" />
+                        <img src={sender.avatar} alt={sender.name} className="w-9 h-9 rounded-full object-cover border border-[#e6e2f8]" />
                         <div>
-                          <p className="text-xs font-bold text-white">{sender.name}</p>
-                          <p className="text-[10px] text-[#35ed7e]">@{sender.username}</p>
+                          <p className="text-xs font-bold text-slate-900">{sender.name}</p>
+                          <p className="text-[10px] text-[#7256c3]">@{sender.username}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleAcceptRequest(req)}
-                          className="bg-[#35ed7e] text-black px-2.5 py-1.5 rounded-xl text-[10px] font-black hover:bg-[#4df48f] transition-all cursor-pointer"
+                          className="bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-all cursor-pointer shadow-xs"
                         >
                           Accept
                         </button>
                         <button
                           onClick={() => handleRejectRequest(req.id)}
-                          className="bg-red-500/20 text-red-300 border border-red-500/40 px-2.5 py-1.5 rounded-xl text-[10px] font-bold hover:bg-red-500/30 transition-all cursor-pointer"
+                          className="bg-rose-50 text-rose-600 border border-rose-200 px-2.5 py-1.5 rounded-xl text-[10px] font-bold hover:bg-rose-100 transition-all cursor-pointer"
                         >
                           Decline
                         </button>
@@ -263,10 +261,10 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
           </div>
         )}
 
-            {/* Error Notice */}
-            {errorNotice && (
-              <div className="bg-red-500/10 border border-red-500/20 p-2.5 rounded-xl text-center text-red-300 font-medium text-xs">{errorNotice}</div>
-            )}
+        {/* Error Notice */}
+        {errorNotice && (
+          <div className="bg-rose-50 border border-rose-200 p-2.5 rounded-xl text-center text-rose-600 font-medium text-xs">{errorNotice}</div>
+        )}
 
       </div>
     </div>

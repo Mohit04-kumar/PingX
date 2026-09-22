@@ -48,16 +48,16 @@ export function EmojiPicker({ onSelectEmoji, onClose }) {
 
   // Search filter
   const displayedEmojis = searchQuery.trim()
-    ? EMOJI_CATEGORIES.flatMap((c) => c.emojis).filter((emoji) => true) // Display all matching emojis
+    ? EMOJI_CATEGORIES.flatMap((c) => c.emojis)
     : currentCatData.emojis;
 
   return (
     <div
       ref={pickerRef}
-      className="absolute bottom-16 right-4 sm:right-12 z-50 w-72 sm:w-80 glass-panel rounded-3xl p-3 border border-[#5865f2]/40 shadow-2xl space-y-2 animate-fadeIn bg-[#1e2353]/95 backdrop-blur-xl text-white"
+      className="absolute bottom-16 right-4 sm:right-12 z-50 w-72 sm:w-80 rounded-3xl p-3 border border-[#e6e2f8] shadow-2xl space-y-2 animate-fadeIn bg-white/95 backdrop-blur-xl text-slate-900"
     >
       {/* Category Tabs */}
-      <div className="flex items-center justify-between border-b border-[#5865f2]/20 pb-2 px-1">
+      <div className="flex items-center justify-between border-b border-[#e6e2f8] pb-2 px-1">
         <div className="flex gap-1">
           {EMOJI_CATEGORIES.map((cat) => {
             const Icon = cat.icon;
@@ -67,7 +67,7 @@ export function EmojiPicker({ onSelectEmoji, onClose }) {
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
                 className={`p-2 rounded-xl transition-all cursor-pointer ${
-                  isActive ? 'bg-[#5865f2] text-white shadow-md' : 'text-gray-400 hover:text-white'
+                  isActive ? 'bg-[#7256c3] text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                 }`}
                 title={cat.name}
               >
@@ -76,7 +76,7 @@ export function EmojiPicker({ onSelectEmoji, onClose }) {
             );
           })}
         </div>
-        <span className="text-[10px] font-bold text-[#35ed7e] uppercase font-mono tracking-wider">Emoji Engine</span>
+        <span className="text-[10px] font-bold text-[#7256c3] uppercase font-mono tracking-wider">Emoji Picker</span>
       </div>
 
       {/* Emoji Grid */}
@@ -87,7 +87,7 @@ export function EmojiPicker({ onSelectEmoji, onClose }) {
             onClick={() => {
               onSelectEmoji(emoji);
             }}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-lg hover:bg-[#5865f2]/30 hover:scale-125 transition-transform cursor-pointer"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-lg hover:bg-violet-100 hover:scale-125 transition-transform cursor-pointer"
           >
             {emoji}
           </button>

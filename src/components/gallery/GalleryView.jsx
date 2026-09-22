@@ -375,26 +375,26 @@ export function GalleryView() {
 
       {/* Fullscreen Media Preview Modal */}
       {previewMedia && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn" onClick={() => setPreviewMedia(null)}>
-          <div className="relative max-w-3xl w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn" onClick={() => setPreviewMedia(null)}>
+          <div className="relative max-w-3xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-[#e6e2f8]" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setPreviewMedia(null)}
-              className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/70 text-white flex items-center justify-center cursor-pointer z-10"
+              className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 text-slate-700 hover:bg-white hover:text-slate-900 shadow-md flex items-center justify-center cursor-pointer z-10 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
             {previewMedia.type === 'video' ? (
-              <video src={previewMedia.mediaUrl} controls autoPlay className="w-full max-h-[75vh] object-contain bg-black" />
+              <video src={previewMedia.mediaUrl} controls autoPlay className="w-full max-h-[75vh] object-contain bg-slate-100" />
             ) : (
-              <img src={previewMedia.mediaUrl} alt={previewMedia.caption} className="w-full max-h-[75vh] object-contain bg-black" />
+              <img src={previewMedia.mediaUrl} alt={previewMedia.caption} className="w-full max-h-[75vh] object-contain bg-slate-100" />
             )}
 
-            <div className="p-5 text-white bg-slate-900 space-y-2">
-              <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-lime-500/20 text-lime-400">
+            <div className="p-5 text-slate-900 bg-white space-y-2 border-t border-[#e6e2f8]">
+              <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-violet-100 text-[#7256c3]">
                 {previewMedia.category}
               </span>
-              <p className="text-sm font-medium">{previewMedia.caption}</p>
+              <p className="text-sm font-semibold text-slate-800">{previewMedia.caption}</p>
             </div>
           </div>
         </div>
