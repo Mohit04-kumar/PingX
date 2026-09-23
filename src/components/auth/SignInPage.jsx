@@ -16,6 +16,13 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Google & OTP Modal States
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('+91 98765 43210');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
@@ -247,12 +254,8 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setEmailOrUser('demo.user@pingx.com');
-                      setPassword('password123');
-                      addToast('Filled demo credentials! Click Sign In.', 'info');
-                    }}
-                    className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                    onClick={() => setShowGoogleModal(true)}
+                    className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer shadow-2xs hover:border-[#7256c3]"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
@@ -260,22 +263,15 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
                       <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
                       <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
                     </svg>
-                    Google
+                    Google One-Tap
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setEmailOrUser('apple.user@pingx.com');
-                      setPassword('password123');
-                      addToast('Filled demo credentials! Click Sign In.', 'info');
-                    }}
-                    className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                    onClick={() => setShowOtpModal(true)}
+                    className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer shadow-2xs hover:border-[#7256c3]"
                   >
-                    <svg className="w-4 h-4 fill-current text-slate-900" viewBox="0 0 170 170">
-                      <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.08-7.7-7.94-12-14.58-6.19-9.58-11.05-20.73-14.58-33.45-3.53-12.72-5.3-24.36-5.3-34.92 0-14.48 3.56-26.65 10.68-36.5 7.12-9.85 16.27-14.88 27.46-15.09 5.64 0 11.53 1.48 17.67 4.45 6.14 2.97 10.05 4.51 11.73 4.62 1.3.11 5.37-1.46 12.22-4.71 6.84-3.25 12.75-4.68 17.72-4.29 13.06.87 23.36 5.89 30.9 15.06-11.54 6.96-17.15 16.48-16.83 28.56.32 9.57 4.09 17.65 11.31 24.24 7.22 6.59 15.65 10.35 25.3 11.28-2.06 6.31-4.78 12.87-8.15 19.68zM119.22 33.39c0-7.39 2.68-14.34 8.04-20.85 5.36-6.51 12-10.74 19.92-12.69.87 6.96-.92 13.91-5.36 20.85-4.44 6.94-10.97 11.45-19.59 13.53-.44-.28-1.57-.46-3.01-.84z"/>
-                    </svg>
-                    Apple
+                    <span>📱 OTP Login</span>
                   </button>
                 </div>
               </div>
@@ -302,6 +298,165 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
       <footer className="w-full max-w-7xl mx-auto px-6 py-6 text-center text-xs text-slate-400">
         © {new Date().getFullYear()} PingX. All rights reserved. Encrypted & Privacy Preserving.
       </footer>
+
+      {/* Google Sign-In Modal Popup */}
+      {showGoogleModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setShowGoogleModal(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 space-y-5 animate-scaleUp text-slate-900"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                </svg>
+                <h3 className="font-extrabold text-sm text-slate-900 font-heading">Sign in with Google</h3>
+              </div>
+              <button onClick={() => setShowGoogleModal(false)} className="p-1 rounded-full text-slate-400 hover:bg-slate-100 cursor-pointer">
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">Choose an account to continue to PingX:</p>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  login('raman@pingx.app', '123');
+                  setShowGoogleModal(false);
+                  addToast('Signed in via Google as Raman Raj!', 'success', 2500);
+                  if (onAuthSuccess) onAuthSuccess();
+                }}
+                className="w-full p-3 rounded-2xl border border-slate-200 hover:border-[#7256c3] bg-slate-50 hover:bg-white transition-all flex items-center gap-3 text-left cursor-pointer"
+              >
+                <img
+                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80"
+                  alt="Raman Raj"
+                  className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                />
+                <div className="truncate">
+                  <p className="font-bold text-xs text-slate-900">Raman Raj</p>
+                  <p className="text-[11px] text-slate-500">raman@pingx.app</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  login('mr.mohitkumar004@gmail.com', '123');
+                  setShowGoogleModal(false);
+                  addToast('Signed in via Google as Mohit Kumar!', 'success', 2500);
+                  if (onAuthSuccess) onAuthSuccess();
+                }}
+                className="w-full p-3 rounded-2xl border border-slate-200 hover:border-[#7256c3] bg-slate-50 hover:bg-white transition-all flex items-center gap-3 text-left cursor-pointer"
+              >
+                <div className="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                  M
+                </div>
+                <div className="truncate">
+                  <p className="font-bold text-xs text-slate-900">Mohit Kumar</p>
+                  <p className="text-[11px] text-slate-500">mr.mohitkumar004@gmail.com</p>
+                </div>
+              </button>
+            </div>
+
+            <p className="text-[10px] text-slate-400 text-center">
+              Google will share your name, email address, and profile picture with PingX.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Phone OTP Verification Modal */}
+      {showOtpModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setShowOtpModal(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 space-y-4 animate-scaleUp text-slate-900 text-xs"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-sm text-slate-900 font-heading">
+                {otpSent ? 'Verify 6-Digit OTP' : 'Sign in with Phone OTP'}
+              </h3>
+              <button onClick={() => setShowOtpModal(false)} className="p-1 rounded-full text-slate-400 hover:bg-slate-100 cursor-pointer">
+                ✕
+              </button>
+            </div>
+
+            {!otpSent ? (
+              <div className="space-y-4">
+                <p className="text-slate-600 text-xs">Enter your mobile phone number to receive a secure login OTP code:</p>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Mobile Number</label>
+                  <input
+                    type="tel"
+                    value={otpPhone}
+                    onChange={(e) => setOtpPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-mono font-bold outline-none focus:border-[#7256c3]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpSent(true);
+                    setOtpCode('849201');
+                    addToast('OTP Sent!', 'OTP code 849201 dispatched via SMS.', 'info', 3000);
+                  }}
+                  className="w-full py-3 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs"
+                >
+                  Send 6-Digit OTP
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-slate-600 text-xs">We sent a 6-digit verification code to <span className="font-mono font-bold text-slate-900">{otpPhone}</span>:</p>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Verification Code</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    placeholder="849201"
+                    className="w-full text-center tracking-widest text-lg font-mono font-extrabold px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 outline-none focus:border-[#7256c3]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    login('raman@pingx.app', '123');
+                    setShowOtpModal(false);
+                    addToast('Phone number verified! Welcome to PingX.', 'success', 2500);
+                    if (onAuthSuccess) onAuthSuccess();
+                  }}
+                  className="w-full py-3 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs"
+                >
+                  Verify & Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOtpSent(false)}
+                  className="w-full text-center text-[11px] font-bold text-[#7256c3] hover:underline cursor-pointer"
+                >
+                  Change phone number
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

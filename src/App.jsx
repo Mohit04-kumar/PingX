@@ -33,6 +33,7 @@ import { SettingsView } from './components/settings/SettingsView';
 import { AboutView } from './components/about/AboutView';
 import { PingsView } from './components/pings/PingsView';
 import { AIView } from './components/ai/AIView';
+import { ExploreView } from './components/explore/ExploreView';
 
 import { FloatingAIBubble } from './components/ai/FloatingAIBubble';
 import { AIPopupPanel } from './components/ai/AIPopupPanel';
@@ -60,7 +61,10 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleEnterApp = () => {
+  const handleEnterApp = (targetTab = 'home') => {
+    if (typeof targetTab === 'string') {
+      setActiveTab(targetTab);
+    }
     if (user) {
       setCurrentView('app');
     } else {
@@ -103,6 +107,7 @@ function AppContent() {
           onNavigateToLanding={handleNavigateToLanding}
         >
           {activeTab === 'home' && <DashboardView setActiveTab={setActiveTab} />}
+          {activeTab === 'explore' && <ExploreView />}
           {activeTab === 'chats' && <ChatView />}
           {activeTab === 'shop' && <ShopView />}
           {activeTab === 'connect' && <ConnectView />}
@@ -119,23 +124,23 @@ function AppContent() {
       {currentView === 'landing' && (
         <CursorFollow className="min-h-screen text-slate-900 font-sans relative bg-white">
           <Navbar
-            onEnterApp={handleEnterApp}
+            onEnterApp={() => handleEnterApp('home')}
             onOpenAuth={handleOpenAuth}
             onNavigateToLanding={handleNavigateToLanding}
             isLoggedIn={!!user}
           />
           <HeroSection
-            onEnterApp={handleEnterApp}
+            onEnterApp={() => handleEnterApp('home')}
             onOpenAuth={handleOpenAuth}
           />
           <StoreMarquee />
-          <CategoryShowcase onEnterApp={handleEnterApp} />
-          <DealOfTheDay onEnterApp={handleEnterApp} />
-          <MessagingPreview onEnterApp={handleEnterApp} />
-          <AIPreview onEnterApp={handleEnterApp} />
-          <ShopPreview onEnterApp={handleEnterApp} />
+          <CategoryShowcase onEnterApp={() => handleEnterApp('shop')} />
+          <DealOfTheDay onEnterApp={() => handleEnterApp('shop')} />
+          <MessagingPreview onEnterApp={() => handleEnterApp('chats')} />
+          <AIPreview onEnterApp={() => handleEnterApp('ai')} />
+          <ShopPreview onEnterApp={() => handleEnterApp('shop')} />
           <LandingCTA onOpenAuth={handleOpenAuth} />
-          <Footer onEnterApp={handleEnterApp} />
+          <Footer onEnterApp={() => handleEnterApp('home')} />
         </CursorFollow>
       )}
 

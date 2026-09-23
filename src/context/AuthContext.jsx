@@ -37,14 +37,13 @@ const safeStorage = {
 export function AuthProvider({ children }) {
   const [accounts, setAccounts] = useState(() => {
     const saved = safeStorage.getItem(STORAGE_KEY, []);
+    const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
     const clean = Array.isArray(saved)
-      ? saved.filter((a) => !['user_1', 'user_2'].includes(a.id) && a.email !== 'rahul@example.com')
+      ? saved.filter((a) => !DUMMY_IDS.includes(a?.id) && a?.email !== 'rahul@example.com')
       : [];
-    MOCK_USERS.forEach((mu) => {
-      if (!clean.some((c) => c.id === mu.id || c.email === mu.email || c.username === mu.username)) {
-        clean.push(mu);
-      }
-    });
+    if (!clean.some((c) => c.id === CURRENT_USER.id || c.email === CURRENT_USER.email)) {
+      clean.unshift(CURRENT_USER);
+    }
     safeStorage.setItem(STORAGE_KEY, clean);
     return clean;
   });
@@ -56,21 +55,21 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => safeStorage.getItem('pingx_token', null));
   const [user, setUser] = useState(() => {
     const saved = safeStorage.getItem('pingx_active_user', null);
-    if (saved && (['user_1', 'user_2', 'user_3'].includes(saved.id) || saved.email === 'rahul@example.com')) {
-      safeStorage.removeItem('pingx_active_user');
-      safeStorage.removeItem('pingx_token');
-      safeStorage.removeItem(STORAGE_KEY);
-      return null;
+    const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
+    if (saved && (DUMMY_IDS.includes(saved.id) || saved.email === 'rahul@example.com')) {
+      safeStorage.setItem('pingx_active_user', CURRENT_USER);
+      return CURRENT_USER;
     }
-    return saved || null;
+    return saved || CURRENT_USER;
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const saved = safeStorage.getItem('pingx_active_user', null);
-    if (saved && (['user_1', 'user_2', 'user_3'].includes(saved.id) || saved.email === 'rahul@example.com')) {
-      return false;
+    const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
+    if (saved && (DUMMY_IDS.includes(saved.id) || saved.email === 'rahul@example.com')) {
+      return true;
     }
-    return !!saved;
+    return true; // Active authenticated session
   });
 
   const [authModalOpen, setAuthModalOpen] = useState(false);

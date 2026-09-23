@@ -29,7 +29,9 @@ import {
   PhoneCall,
   Video,
   MessageCircle,
-  Sparkles
+  Sparkles,
+  SquarePen,
+  ChevronDown
 } from 'lucide-react';
 
 export function ChatView() {
@@ -188,41 +190,63 @@ export function ChatView() {
       
       <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*,video/*" className="hidden" />
 
-      {/* Left Conversations Sidebar */}
+      {/* Left Conversations Sidebar (Matching Image 2) */}
       <div 
-        className="w-full lg:w-80 border-r flex flex-col transition-colors duration-200"
-        style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border)' }}
+        className="w-full lg:w-80 border-r flex flex-col transition-colors duration-200 bg-white"
+        style={{ borderColor: 'var(--border)' }}
       >
         
-        {/* Search & Header */}
+        {/* Header (Handle + Compose Icon) */}
         <div className="p-4 border-b space-y-3" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold font-heading uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>
-              Direct Messages
-            </h3>
             <button
               onClick={() => setIsAddContactOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-white cursor-pointer shadow-sm transition-all flex items-center gap-1 text-xs font-bold"
-              style={{ backgroundColor: 'var(--accent)' }}
-              title="Search Registered Users & Requests"
+              className="flex items-center gap-1.5 text-base font-extrabold text-slate-900 font-heading cursor-pointer hover:opacity-80 transition-opacity"
             >
-              <UserPlus className="w-4 h-4" /> Add
+              <span>{user?.username || 'ramanraj'}</span>
+              <ChevronDown className="w-4 h-4 text-slate-500" />
+            </button>
+
+            <button
+              onClick={() => setIsAddContactOpen(true)}
+              className="p-1.5 rounded-xl text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors shadow-2xs"
+              title="New Message"
+            >
+              <SquarePen className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-2.5" style={{ color: 'var(--text-muted)' }} />
+          {/* Primary / General / Requests Tabs (Matching Image 2) */}
+          <div className="flex items-center border-b border-slate-100 text-xs font-bold pt-1">
+            {['Primary', 'General', 'Requests'].map((tab) => {
+              const id = tab.toLowerCase();
+              const isSelected = activeTab === id || (activeTab === 'all' && id === 'primary');
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex-1 pb-2 text-center transition-colors cursor-pointer relative ${
+                    isSelected ? 'text-slate-900 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
+                  }`}
+                >
+                  {tab}
+                  {isSelected && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 rounded-full" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative pt-1">
+            <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
             <input
               type="text"
               value={chatSearch}
               onChange={(e) => setChatSearch(e.target.value)}
-              placeholder="Search phone number, email, or name..."
-              className="w-full rounded-xl pl-9 pr-3 py-2 text-xs border outline-none transition-colors"
-              style={{ 
-                backgroundColor: 'var(--bg-card)', 
-                borderColor: 'var(--border)', 
-                color: 'var(--text-primary)' 
-              }}
+              placeholder="Search conversations, phone or email..."
+              className="w-full rounded-2xl pl-9 pr-3 py-2 text-xs border border-slate-200 bg-slate-50 text-slate-900 outline-none focus:border-[#7256c3] focus:bg-white transition-colors"
             />
           </div>
 
@@ -269,34 +293,23 @@ export function ChatView() {
               </div>
             </div>
           )}
-        </div>
 
-        {/* Filter Tabs */}
-        <div 
-          className="flex p-1 mx-4 mt-3 rounded-xl text-[11px] font-bold border"
-          style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
-        >
-          <button 
-            onClick={() => setActiveTab('all')} 
-            className="flex-1 py-1.5 rounded-lg transition-all"
-            style={activeTab === 'all' ? { backgroundColor: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-secondary)' }}
-          >
-            All ({chats.length})
-          </button>
-          <button 
-            onClick={() => setActiveTab('direct')} 
-            className="flex-1 py-1.5 rounded-lg transition-all"
-            style={activeTab === 'direct' ? { backgroundColor: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-secondary)' }}
-          >
-            Direct
-          </button>
-          <button 
-            onClick={() => setActiveTab('group')} 
-            className="flex-1 py-1.5 rounded-lg transition-all"
-            style={activeTab === 'group' ? { backgroundColor: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-secondary)' }}
-          >
-            Groups
-          </button>
+          {/* "Your note" bubble item (Matching Image 2) */}
+          <div className="pt-2 flex items-center gap-3">
+            <div className="relative group cursor-pointer" onClick={() => setIsAddContactOpen(true)}>
+              <div className="absolute -top-3.5 left-2 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[9px] font-bold shadow-2xs border border-slate-200 whitespace-nowrap">
+                Your turn...
+              </div>
+              <Avatar
+                src={user?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80'}
+                name={user?.name || 'Raman Raj'}
+                size="md"
+                className="border-2 border-slate-200"
+              />
+              <span className="text-[10px] text-slate-500 block text-center mt-1">Your note</span>
+            </div>
+          </div>
+
         </div>
 
         {/* Conversation List */}
@@ -396,16 +409,22 @@ export function ChatView() {
       <div className="flex-1 flex flex-col relative" style={{ backgroundColor: 'var(--bg-subtle)' }}>
         
         {!activeChat ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-3xl flex items-center justify-center border shadow-xs" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--border)' }}>
-              <Bot className="w-8 h-8" />
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 animate-fadeIn">
+            <div className="w-24 h-24 rounded-full border-2 border-slate-900 flex items-center justify-center mb-1 shadow-xs">
+              <Send className="w-11 h-11 text-slate-900 -rotate-12 translate-x-0.5" />
             </div>
-            <h3 className="text-xl font-bold font-heading" style={{ color: 'var(--text-primary)' }}>
-              Select or Start a Direct Message
+            <h3 className="text-xl font-extrabold font-heading text-slate-900 tracking-tight">
+              Your messages
             </h3>
-            <p className="text-xs max-w-sm" style={{ color: 'var(--text-secondary)' }}>
-              Choose a conversation from the left or connect with registered members to start chatting.
+            <p className="text-xs text-slate-500 max-w-xs">
+              Send a message to start a chat.
             </p>
+            <button
+              onClick={() => setIsAddContactOpen(true)}
+              className="px-6 py-2.5 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:scale-105"
+            >
+              Send message
+            </button>
           </div>
         ) : (
           <>
