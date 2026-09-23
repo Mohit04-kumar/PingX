@@ -13,7 +13,6 @@ import { Footer } from './components/common/Footer';
 import { HeroSection } from './components/landing/HeroSection';
 import { StoreMarquee } from './components/landing/StoreMarquee';
 import { HowItWorks } from './components/landing/HowItWorks';
-import { CategoryShowcase } from './components/landing/CategoryShowcase';
 import { DealOfTheDay } from './components/landing/DealOfTheDay';
 import { MessagingPreview } from './components/landing/MessagingPreview';
 import { AIPreview } from './components/landing/AIPreview';
@@ -176,7 +175,6 @@ function AppContent() {
           <MessagingPreview onEnterApp={() => handleEnterApp('chats')} />
           <DealOfTheDay onEnterApp={() => handleEnterApp('shop')} />
           <AIPreview onEnterApp={() => handleEnterApp('ai')} />
-          <CategoryShowcase onEnterApp={() => handleEnterApp('shop')} />
           <ShopPreview onEnterApp={() => handleEnterApp('shop')} />
           <LandingCTA onOpenAuth={handleOpenAuth} />
           <Footer onEnterApp={() => handleEnterApp('home')} />
