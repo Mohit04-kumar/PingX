@@ -12,6 +12,7 @@ import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { HeroSection } from './components/landing/HeroSection';
 import { StoreMarquee } from './components/landing/StoreMarquee';
+import { HowItWorks } from './components/landing/HowItWorks';
 import { CategoryShowcase } from './components/landing/CategoryShowcase';
 import { DealOfTheDay } from './components/landing/DealOfTheDay';
 import { MessagingPreview } from './components/landing/MessagingPreview';
@@ -171,10 +172,11 @@ function AppContent() {
             onOpenAuth={handleOpenAuth}
           />
           <StoreMarquee />
-          <CategoryShowcase onEnterApp={() => handleEnterApp('shop')} />
-          <DealOfTheDay onEnterApp={() => handleEnterApp('shop')} />
+          <HowItWorks onEnterApp={(tab) => handleEnterApp(tab || 'shop')} />
           <MessagingPreview onEnterApp={() => handleEnterApp('chats')} />
+          <DealOfTheDay onEnterApp={() => handleEnterApp('shop')} />
           <AIPreview onEnterApp={() => handleEnterApp('ai')} />
+          <CategoryShowcase onEnterApp={() => handleEnterApp('shop')} />
           <ShopPreview onEnterApp={() => handleEnterApp('shop')} />
           <LandingCTA onOpenAuth={handleOpenAuth} />
           <Footer onEnterApp={() => handleEnterApp('home')} />

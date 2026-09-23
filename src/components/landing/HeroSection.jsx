@@ -19,42 +19,42 @@ import {
 const SLIDES = [
   {
     id: 0,
-    tag: 'REAL-TIME SOCIAL MESSAGING',
-    badge: '💬 Verified Realtime Network',
-    title: 'CONNECT, CHAT & SHARE REAL MOMENTS',
-    description: 'Ultra-fast 1-on-1 and group chats with live typing status, verified read receipts, audio note visualizers, and instant media sharing.',
-    primaryAction: 'Start Chatting',
+    tag: '💬 REAL-TIME MESSAGING & SMART COMMERCE',
+    badge: '✨ All-in-One Platform',
+    title: 'CHAT WITH FRIENDS. COMPARE PRICES. NEVER OVERPAY.',
+    description: 'PingX combines private real-time messaging, voice notes, and an automated price scanner that checks Amazon, Flipkart, Croma, and Myntra live so you always buy at the lowest price.',
+    primaryAction: 'Explore PingX Free',
     secondaryAction: 'Sign In',
     type: 'chat_ui',
   },
   {
     id: 1,
-    tag: 'SMART KNOWLEDGE & SEARCH',
-    badge: '⚡ Verified Quick Answers',
-    title: 'SEARCH ANYTHING, GET INSTANT FACTS',
-    description: 'Concise 2-bullet answers, instant deal insights, and clear product summaries designed to save your time and give you immediate clarity.',
+    tag: '⚡ SMART ASSISTANT & KNOWLEDGE SEARCH',
+    badge: '🤖 AI Price Intelligence',
+    title: 'SEARCH ANY PRODUCT, GET VERIFIED DEALS INSTANTLY',
+    description: 'Ask PingX AI to compare specs, find hidden price drops, or recap group chat discussions with zero internet fluff.',
     primaryAction: 'Try Smart Search',
-    secondaryAction: 'Explore Topics',
+    secondaryAction: 'View Demo',
     type: 'search_ui',
   },
   {
     id: 2,
-    tag: 'MULTI-STORE PRICE COMPARISON',
-    badge: '🛍️ Save Up to 45% Across Stores',
-    title: 'COMPARE PRICES & SAVE MONEY LIVE',
-    description: 'Scan verified live offers across Amazon, Flipkart, Croma, and Myntra in real time. Track discounts without switching 10 different tabs.',
+    tag: '🛍️ LIVE MULTI-STORE PRICE SCANNER',
+    badge: '💰 Save Up to 40% Across Stores',
+    title: 'SCAN LIVE OFFERS ACROSS AMAZON, FLIPKART & CROMA',
+    description: 'Never switch 10 tabs again. PingX extracts real-time merchant prices so you get the genuine lowest deal in 1 click.',
     primaryAction: 'Compare Live Deals',
     secondaryAction: 'Browse Catalog',
     type: 'deal_ui',
   },
   {
     id: 3,
-    tag: 'VOICE STREAMS & ACTIVITY PINGS',
-    badge: '🎙️ Encrypted Voice Stream',
-    title: 'AUTHENTIC VOICE NOTES & LIVE PINGS',
-    description: 'Share your genuine thoughts with lossless audio notes that capture authentic tone. Send real-time activity pings so friends know when you are free.',
-    primaryAction: 'Send a Voice Note',
-    secondaryAction: 'View Activity Feed',
+    tag: '🎙️ VOICE STREAMS & ACTIVITY PINGS',
+    badge: '🔒 End-to-End Encrypted',
+    title: 'AUTHENTIC AUDIO NOTES & REAL-TIME ACTIVITY PINGS',
+    description: 'Send lossless voice notes that capture your genuine tone and ping friends when you are free or spotted a trending deal.',
+    primaryAction: 'Start Chatting',
+    secondaryAction: 'Explore Channels',
     type: 'voice_ui',
   },
 ];
@@ -187,8 +187,27 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
             </motion.button>
           </div>
 
+          {/* 3 Core Platform Pillars Quick Pills */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-2.5 pt-1 text-left">
+            <div className="p-2 sm:p-2.5 rounded-2xl bg-[#fcfbfe] border border-[#e6e2f8] shadow-2xs">
+              <span className="text-sm block">💬</span>
+              <p className="text-xs font-bold text-slate-900 pt-0.5 leading-none">Real-Time Chat</p>
+              <p className="text-[10px] text-slate-500 pt-1 leading-tight">Voice notes & groups</p>
+            </div>
+            <div className="p-2 sm:p-2.5 rounded-2xl bg-[#fcfbfe] border border-[#e6e2f8] shadow-2xs">
+              <span className="text-sm block">🏷️</span>
+              <p className="text-xs font-bold text-slate-900 pt-0.5 leading-none">Price Scanner</p>
+              <p className="text-[10px] text-slate-500 pt-1 leading-tight">Amazon, Flipkart, Croma</p>
+            </div>
+            <div className="p-2 sm:p-2.5 rounded-2xl bg-[#fcfbfe] border border-[#e6e2f8] shadow-2xs">
+              <span className="text-sm block">⚡</span>
+              <p className="text-xs font-bold text-slate-900 pt-0.5 leading-none">Smart AI</p>
+              <p className="text-[10px] text-slate-500 pt-1 leading-tight">Deal recap & insights</p>
+            </div>
+          </div>
+
           {/* Trust Indicators */}
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-[11px] sm:text-xs font-semibold text-slate-500 pt-3 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-[11px] sm:text-xs font-semibold text-slate-500 pt-2 border-t border-slate-100">
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#7256c3]" />
               100% Privacy Preserved

@@ -59,7 +59,7 @@ export function CategoryShowcase({ onEnterApp }) {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-100 text-[#7256c3] border border-violet-200 text-xs font-extrabold uppercase tracking-wide shadow-xs">
-              <span>SHOP BY CATEGORY</span>
+              <span>MULTI-STORE CATALOG SCANNER</span>
             </div>
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-heading tracking-tight text-slate-900 leading-tight">

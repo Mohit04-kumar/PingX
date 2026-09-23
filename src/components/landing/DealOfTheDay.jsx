@@ -31,26 +31,39 @@ export function DealOfTheDay({ onEnterApp }) {
   const formatNum = (n) => String(n).padStart(2, '0');
 
   return (
-    <section className="py-16 bg-[#f8f7ff] border-y border-[#e6e2f8] relative z-10 overflow-hidden">
+    <section className="py-20 md:py-24 bg-[#f8f7ff] border-y border-[#e6e2f8] relative z-10 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         
-        {/* Deal of the Day Hero Banner (Directly inspired by ShopEase Reference) */}
-        <div className="bg-white rounded-3xl border border-[#e6e2f8] shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+        {/* Section Context Header */}
+        <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wide bg-violet-100 text-[#7256c3] border border-violet-200 shadow-xs">
+            <Clock className="w-3.5 h-3.5" />
+            <span>Real-Time Deal Scanner Demonstration</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold font-heading text-slate-900 tracking-tight">
+            How PingX Compares Live Retailers for You
+          </h2>
+          <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto">
+            Instead of opening 4 browser tabs, PingX continuously scans Amazon, Flipkart, Croma, and Reliance Digital so you always get the lowest verified price.
+          </p>
+        </div>
+
+        {/* Deal of the Day Comparison Card */}
+        <div className="bg-white rounded-3xl border border-[#e6e2f8] shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-12">
           
           {/* Left Column: Deal Information & Countdown */}
-          <div className="lg:col-span-6 p-8 sm:p-12 flex flex-col justify-between space-y-8">
+          <div className="md:col-span-6 p-8 sm:p-12 flex flex-col justify-between space-y-8">
             <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-100 text-[#7256c3] border border-violet-200 text-xs font-extrabold uppercase tracking-wide shadow-xs">
-                <Clock className="w-3.5 h-3.5" />
-                <span>LIMITED TIME OFFER • DEAL OF THE DAY</span>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-extrabold uppercase tracking-wide shadow-xs">
+                <span>⚡ LOWEST PRICE DETECTED ON FLIPKART</span>
               </div>
 
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-heading text-slate-900 tracking-tight leading-tight">
+              <h3 className="text-2xl sm:text-3xl font-extrabold font-heading text-slate-900 tracking-tight leading-tight">
                 Sony WH-1000XM5 Wireless ANC Headphones
               </h3>
 
               <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-                Industry-leading noise cancellation, 30-hour battery life, and crystal-clear hands-free calling. Real-time scanner detected a price drop across major retailers.
+                Industry-leading noise cancellation and 30-hour battery. PingX scanned 4 retailers live and found Flipkart is currently ₹2,000 cheaper than Croma.
               </p>
 
               <div className="flex items-center gap-3 pt-1">
@@ -117,7 +130,7 @@ export function DealOfTheDay({ onEnterApp }) {
           </div>
 
           {/* Right Column: Studio Pedestal Showcase & Store Price Matrix */}
-          <div className="lg:col-span-6 bg-[#fcfbfe] border-t lg:border-t-0 lg:border-l border-[#e6e2f8] p-8 sm:p-12 flex flex-col justify-between space-y-6">
+          <div className="md:col-span-6 bg-[#fcfbfe] border-t md:border-t-0 md:border-l border-[#e6e2f8] p-8 sm:p-12 flex flex-col justify-between space-y-6">
             
             {/* Studio Pedestal Product Photography */}
             <div className="relative rounded-3xl bg-white border border-[#e6e2f8] p-6 shadow-sm flex items-center justify-center overflow-hidden">
