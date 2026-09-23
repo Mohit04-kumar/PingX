@@ -58,9 +58,18 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other', 'Prefer not to say', ''],
+      default: ''
+    },
     dob: {
       type: String,
       default: ''
+    },
+    phoneVerified: {
+      type: Boolean,
+      default: false
     },
     gallery: {
       type: Array,

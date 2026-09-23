@@ -40,7 +40,7 @@ export function DealOfTheDay({ onEnterApp }) {
           {/* Left Column: Deal Information & Countdown */}
           <div className="lg:col-span-6 p-8 sm:p-12 flex flex-col justify-between space-y-8">
             <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1e1b4b] text-white text-xs font-extrabold uppercase tracking-wide shadow-xs">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-100 text-[#7256c3] border border-violet-200 text-xs font-extrabold uppercase tracking-wide shadow-xs">
                 <Clock className="w-3.5 h-3.5" />
                 <span>LIMITED TIME OFFER • DEAL OF THE DAY</span>
               </div>

@@ -4,9 +4,10 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, ShieldChe
 import { PingXLogo } from '../common/PingXLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { authApi } from '../../services/authApi';
 
 export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSuccess }) {
-  const { login } = useAuth();
+  const { login, loginWithPhoneOtp } = useAuth();
   const { addToast } = useToast();
 
   const [emailOrUser, setEmailOrUser] = useState('');
@@ -62,7 +63,7 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
           onClick={onNavigateToLanding}
           className="cursor-pointer"
         >
-          <PingXLogo className="w-9 h-9" showText={true} textClassName="text-xl text-slate-900" />
+          <PingXLogo className="h-9 flex items-center" showText={true} textClassName="text-xl text-slate-900" />
         </button>
       </header>
 
@@ -409,12 +410,25 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setOtpSent(true);
-                    setOtpCode('849201');
-                    addToast('OTP Sent!', 'OTP code 849201 dispatched via SMS.', 'info', 3000);
+                  onClick={async () => {
+                    if (!otpPhone || otpPhone.replace(/\D/g, '').length < 10) {
+                      addToast('Please enter a valid 10-digit mobile number.', 'error');
+                      return;
+                    }
+                    try {
+                      const data = await authApi.sendOtp(otpPhone, 'login');
+                      setOtpSent(true);
+                      if (data.previewCode) {
+                        setOtpCode(data.previewCode);
+                        addToast(`OTP Sent to ${otpPhone}! Code: ${data.previewCode}`, 'info', 5000);
+                      } else {
+                        addToast(`Verification code sent to ${otpPhone}.`, 'success', 3000);
+                      }
+                    } catch (err) {
+                      addToast(err.message || 'Failed to dispatch OTP.', 'error');
+                    }
                   }}
-                  className="w-full py-3 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs"
+                  className="w-full py-3 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
                 >
                   Send 6-Digit OTP
                 </button>
@@ -428,20 +442,28 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
                     type="text"
                     maxLength={6}
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    placeholder="849201"
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="6-Digit OTP"
                     className="w-full text-center tracking-widest text-lg font-mono font-extrabold px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 outline-none focus:border-[#7256c3]"
                   />
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    login('raman@pingx.app', '123');
-                    setShowOtpModal(false);
-                    addToast('Phone number verified! Welcome to PingX.', 'success', 2500);
-                    if (onAuthSuccess) onAuthSuccess();
+                  onClick={async () => {
+                    if (!otpCode || otpCode.trim().length !== 6) {
+                      addToast('Please enter the 6-digit code received on your phone.', 'error');
+                      return;
+                    }
+                    try {
+                      await loginWithPhoneOtp(otpPhone, otpCode.trim());
+                      setShowOtpModal(false);
+                      addToast('Phone number verified! Welcome to PingX.', 'success', 2500);
+                      if (onAuthSuccess) onAuthSuccess();
+                    } catch (err) {
+                      addToast(err.message || 'Invalid or expired OTP code.', 'error');
+                    }
                   }}
-                  className="w-full py-3 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs"
+                  className="w-full py-3 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
                 >
                   Verify & Sign In
                 </button>

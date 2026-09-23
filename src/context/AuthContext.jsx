@@ -55,21 +55,23 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => safeStorage.getItem('pingx_token', null));
   const [user, setUser] = useState(() => {
     const saved = safeStorage.getItem('pingx_active_user', null);
+    if (!saved) return null;
     const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
-    if (saved && (DUMMY_IDS.includes(saved.id) || saved.email === 'rahul@example.com')) {
-      safeStorage.setItem('pingx_active_user', CURRENT_USER);
-      return CURRENT_USER;
+    if (DUMMY_IDS.includes(saved.id) || saved.email === 'rahul@example.com') {
+      safeStorage.removeItem('pingx_active_user');
+      return null;
     }
-    return saved || CURRENT_USER;
+    return saved;
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const saved = safeStorage.getItem('pingx_active_user', null);
+    if (!saved) return false;
     const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
-    if (saved && (DUMMY_IDS.includes(saved.id) || saved.email === 'rahul@example.com')) {
-      return true;
+    if (DUMMY_IDS.includes(saved.id) || saved.email === 'rahul@example.com') {
+      return false;
     }
-    return true; // Active authenticated session
+    return true;
   });
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -197,21 +199,25 @@ export function AuthProvider({ children }) {
     return { success: true };
   };
 
-  const register = ({ name, username, email, phone, password, avatar, bio, location, dob }) => {
+  const register = ({ name, username, email, phone, gender, dob, password, verificationToken, avatar, bio, location }) => {
+    const cleanUsername = (username || name || 'user').toLowerCase().replace(/\s+/g, '');
+    const cleanPhone = String(phone || '').replace(/[\s()-]/g, '');
     const newUser = {
       id: `usr_${Date.now()}`,
       name: name || 'User',
-      username: username || (name || 'user').toLowerCase().replace(/\s+/g, ''),
-      email: email || `${(username || 'user')}@pingx.app`,
-      phone: phone || '',
-      password: password || '',
-      avatar: avatar || '',
-      bio: bio || '',
-      role: 'Member',
-      location: location || '',
+      username: cleanUsername,
+      email: email || `${cleanUsername}@pingx.app`,
+      phone: cleanPhone,
+      phoneVerified: true,
+      gender: gender || 'Prefer not to say',
       dob: dob || '',
+      password: password || '',
+      avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanUsername)}`,
+      bio: bio || 'PingX Member',
+      role: 'Member',
+      location: location || 'India',
       gallery: [],
-      profileSetupCompleted: false,
+      profileSetupCompleted: true,
       joinedDate: new Date().getFullYear().toString()
     };
 
@@ -219,14 +225,26 @@ export function AuthProvider({ children }) {
     setUser(newUser);
     setIsAuthenticated(true);
     setIsGuest(false);
-    setIsProfileSetupOpen(true);
+    setIsProfileSetupOpen(false);
     safeStorage.setItem('pingx_active_user', newUser);
 
-    // Sync with remote server if active
+    // Sync with remote backend service
     fetch(`${API_BASE}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, username, email, phone, password, avatar: avatar || '', bio: bio || '', location: location || '', dob: dob || '' })
+      body: JSON.stringify({
+        name,
+        username: cleanUsername,
+        email,
+        phone: cleanPhone,
+        gender,
+        dob,
+        password,
+        verificationToken,
+        avatar: newUser.avatar,
+        bio: newUser.bio,
+        location: newUser.location
+      })
     })
       .then((r) => r.json())
       .then((json) => {
@@ -239,7 +257,36 @@ export function AuthProvider({ children }) {
       })
       .catch(() => {});
 
-    return { success: true };
+    return { success: true, user: newUser };
+  };
+
+  const loginWithPhoneOtp = async (phone, code) => {
+    const cleanPhone = String(phone || '').replace(/[\s()-]/g, '');
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/otp/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, code })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Phone OTP login failed');
+      }
+
+      if (data.token && data.user) {
+        setToken(data.token);
+        setUser(data.user);
+        setIsAuthenticated(true);
+        setIsGuest(false);
+        safeStorage.setItem('pingx_token', data.token);
+        safeStorage.setItem('pingx_active_user', data.user);
+        return { success: true, user: data.user };
+      }
+      return data;
+    } catch (err) {
+      console.error('loginWithPhoneOtp error:', err);
+      throw err;
+    }
   };
 
   const logout = () => {
@@ -410,6 +457,7 @@ export function AuthProvider({ children }) {
       setAuthMode,
       openAuthModal,
       login,
+      loginWithPhoneOtp,
       register,
       logout,
       switchAccount,

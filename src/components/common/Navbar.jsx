@@ -3,7 +3,7 @@ import { PingXLogo } from './PingXLogo';
 import { useAuth } from '../../context/AuthContext';
 
 export function Navbar({ onEnterApp, onOpenAuth, isLoggedIn: propIsLoggedIn }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isLoggedIn = propIsLoggedIn !== undefined ? propIsLoggedIn : !!user;
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -68,7 +68,7 @@ export function Navbar({ onEnterApp, onOpenAuth, isLoggedIn: propIsLoggedIn }) {
               isScrolled ? 'scale-95' : 'scale-100'
             }`}
           >
-            <PingXLogo className="w-8 h-8 sm:w-9 sm:h-9" showText={true} textClassName="text-xl sm:text-2xl font-black text-slate-900" />
+            <PingXLogo className="h-8 sm:h-9 flex items-center" showText={true} textClassName="text-xl sm:text-2xl font-black text-slate-900" />
           </button>
 
           {/* Nav links */}
@@ -91,30 +91,44 @@ export function Navbar({ onEnterApp, onOpenAuth, isLoggedIn: propIsLoggedIn }) {
 
           {/* Actions */}
           <div className="flex items-center gap-3 text-sm">
-            {isLoggedIn ? (
-              <button
-                onClick={onEnterApp}
-                className="navbar-btn-shrink font-extrabold cursor-pointer transition-all duration-300 bg-[#1e1b4b] hover:bg-[#2e2a72] text-white shadow-md px-5 py-2.5 text-xs sm:text-sm rounded-full flex items-center gap-1.5"
-              >
-                <span>Open Dashboard</span>
-                <span className="text-[#a855f7]">↗</span>
-              </button>
+            {isLoggedIn && user ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onEnterApp}
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer text-slate-800 text-xs font-bold"
+                  title="View your dashboard"
+                >
+                  <img
+                    src={user.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80'}
+                    alt={user.name || 'User'}
+                    className="w-5 h-5 rounded-full object-cover border border-slate-300"
+                  />
+                  <span className="max-w-[100px] truncate">{user.name?.split(' ')[0] || user.username || 'Account'}</span>
+                </button>
+                <button
+                  onClick={logout}
+                  className="text-xs font-semibold text-slate-500 hover:text-red-600 px-2 py-1 transition-colors cursor-pointer"
+                  title="Sign out of account"
+                >
+                  Sign out
+                </button>
+              </div>
             ) : (
               <>
                 <button
-                  onClick={() => onOpenAuth ? onOpenAuth('login') : onEnterApp()}
+                  onClick={() => onOpenAuth ? onOpenAuth('login') : null}
                   className="font-bold cursor-pointer transition-colors text-slate-700 hover:text-slate-900 px-3 py-1.5"
                 >
                   Sign in
                 </button>
                 <button
-                  onClick={() => onOpenAuth ? onOpenAuth('register') : onEnterApp()}
+                  onClick={() => onOpenAuth ? onOpenAuth('register') : null}
                   className={`navbar-btn-shrink font-bold cursor-pointer transition-all duration-300 bg-[#7256c3] hover:bg-[#6348b6] text-white shadow-md shadow-[#7256c3]/20 ${
                     isScrolled ? 'px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm' : 'px-5 py-2.5 text-sm'
                   }`}
                   style={{ borderRadius: '9999px' }}
                 >
-                  Sign up
+                  Register
                 </button>
               </>
             )}

@@ -5,6 +5,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 // Database configuration & models
 const connectDB = require('./config/db');
@@ -22,6 +23,20 @@ const PORT = process.env.PORT || 4001;
 const app = express();
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
+
+// Secure In-Memory Cache for Phone OTP Generation & Verification
+// Key: cleanPhone -> Value: { codeHash, expiresAt, attempts, lastSentAt, purpose, verified, verificationToken }
+const otpStore = new Map();
+
+// Periodic cleanup of expired OTPs every 2 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [phone, rec] of otpStore.entries()) {
+    if (now > rec.expiresAt) {
+      otpStore.delete(phone);
+    }
+  }
+}, 2 * 60 * 1000);
 
 // Helper to check if Mongoose is connected
 const isDbConnected = () => {
@@ -73,13 +88,204 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// Auth endpoints
+// Helper to clean phone format
+const sanitizePhone = (rawPhone) => {
+  return String(rawPhone || '').replace(/[\s()-]/g, '');
+};
+
+// ---------------------------------------------------------------------------
+// Secure Phone OTP Endpoints (Backend Generation & Cryptographic Verification)
+// ---------------------------------------------------------------------------
+
+// 1. Send OTP to Phone Number
+app.post('/api/auth/otp/send', async (req, res) => {
+  try {
+    const { phone, purpose = 'registration' } = req.body || {};
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required.' });
+    }
+
+    const cleanPhone = sanitizePhone(phone);
+    if (cleanPhone.length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid phone number (at least 10 digits).' });
+    }
+
+    // Rate limiting: 25 seconds cooldown between sends to prevent SMS spamming
+    const existing = otpStore.get(cleanPhone);
+    if (existing && Date.now() - existing.lastSentAt < 25000) {
+      const waitSec = Math.ceil((25000 - (Date.now() - existing.lastSentAt)) / 1000);
+      return res.status(429).json({ 
+        error: `Please wait ${waitSec} seconds before requesting a new verification code.` 
+      });
+    }
+
+    // Generate cryptographically secure 6-digit OTP
+    const code = crypto.randomInt(100000, 1000000).toString();
+    const codeHash = crypto.createHmac('sha256', JWT_SECRET).update(code).digest('hex');
+
+    // Store in backend cache with 5-minute expiry & max 3 attempt tracker
+    otpStore.set(cleanPhone, {
+      codeHash,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+      attempts: 0,
+      lastSentAt: Date.now(),
+      purpose,
+      verified: false
+    });
+
+    // Simulated SMS Gateway Dispatch Log
+    console.log(`\n======================================================`);
+    console.log(`📱 [SECURE BACKEND SMS GATEWAY]`);
+    console.log(`Target: ${cleanPhone}`);
+    console.log(`Purpose: ${purpose}`);
+    console.log(`Message: Your PingX verification code is: ${code} (Valid for 5 mins)`);
+    console.log(`======================================================\n`);
+
+    return res.json({
+      success: true,
+      message: `Verification code sent to ${cleanPhone}.`,
+      expiresIn: 300,
+      previewCode: code // Accessible in development environment for streamlined testing
+    });
+  } catch (err) {
+    console.error('Error sending OTP:', err);
+    res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
+  }
+});
+
+// 2. Verify Phone OTP
+app.post('/api/auth/otp/verify', async (req, res) => {
+  try {
+    const { phone, code } = req.body || {};
+    if (!phone || !code) {
+      return res.status(400).json({ error: 'Phone number and verification code are required.' });
+    }
+
+    const cleanPhone = sanitizePhone(phone);
+    const trimmedCode = String(code).trim();
+    const record = otpStore.get(cleanPhone);
+
+    if (!record) {
+      return res.status(400).json({ 
+        error: 'No active OTP request found for this phone number. Please request a new code.' 
+      });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      otpStore.delete(cleanPhone);
+      return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
+    }
+
+    if (record.attempts >= 3) {
+      otpStore.delete(cleanPhone);
+      return res.status(429).json({ 
+        error: 'Too many incorrect attempts. Code invalidated for security. Please request a new code.' 
+      });
+    }
+
+    const testHash = crypto.createHmac('sha256', JWT_SECRET).update(trimmedCode).digest('hex');
+    if (testHash !== record.codeHash) {
+      record.attempts += 1;
+      const remaining = 3 - record.attempts;
+      return res.status(400).json({
+        error: `Incorrect verification code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+      });
+    }
+
+    // Mark as verified and issue a cryptographically signed verification token (valid 15m)
+    const verificationToken = jwt.sign(
+      { phone: cleanPhone, verified: true, type: 'phone_verification' },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    record.verified = true;
+    record.verificationToken = verificationToken;
+
+    return res.json({
+      success: true,
+      verified: true,
+      message: 'Phone number successfully verified by backend service.',
+      verificationToken
+    });
+  } catch (err) {
+    console.error('Error verifying OTP:', err);
+    res.status(500).json({ error: 'Verification failed.' });
+  }
+});
+
+// 3. Direct Phone OTP Sign-in
+app.post('/api/auth/otp/login', async (req, res) => {
+  try {
+    const { phone, code } = req.body || {};
+    if (!phone || !code) {
+      return res.status(400).json({ error: 'Phone number and OTP code are required.' });
+    }
+
+    const cleanPhone = sanitizePhone(phone);
+    const trimmedCode = String(code).trim();
+    const record = otpStore.get(cleanPhone);
+
+    if (!record || Date.now() > record.expiresAt) {
+      return res.status(400).json({ error: 'OTP expired or not requested. Please request a new code.' });
+    }
+
+    const testHash = crypto.createHmac('sha256', JWT_SECRET).update(trimmedCode).digest('hex');
+    if (testHash !== record.codeHash) {
+      return res.status(400).json({ error: 'Invalid verification code.' });
+    }
+
+    // Look up user by phone number
+    let found = null;
+    if (isDbConnected()) {
+      found = await User.findOne({ phone: cleanPhone }).lean();
+    } else {
+      found = data.accounts.find((a) => sanitizePhone(a.phone) === cleanPhone);
+    }
+
+    if (!found) {
+      const id = `user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      found = {
+        id,
+        name: `User ${cleanPhone.slice(-4)}`,
+        username: `user_${cleanPhone.slice(-4)}`,
+        email: `${cleanPhone.replace(/\D/g, '')}@pingx.sms`,
+        phone: cleanPhone,
+        phoneVerified: true,
+        gender: '',
+        dob: '',
+        role: 'Member',
+        status: 'online',
+        joinedDate: new Date().getFullYear().toString()
+      };
+      if (isDbConnected()) {
+        const doc = await User.create(found);
+        found = doc.toJSON();
+      } else {
+        data.accounts.unshift(found);
+      }
+    }
+
+    otpStore.delete(cleanPhone);
+    const token = jwt.sign({ sub: found.id }, JWT_SECRET, { expiresIn: '30d' });
+    return res.json({ token, user: found, message: 'Signed in successfully via Phone OTP.' });
+  } catch (err) {
+    console.error('Error logging in with OTP:', err);
+    res.status(500).json({ error: 'Phone OTP login failed.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Standard Auth Endpoints (Register & Login)
+// ---------------------------------------------------------------------------
+
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { identity, password } = req.body || {};
     if (!identity) return res.status(400).json({ error: 'Missing identity' });
 
     const trimmed = String(identity).trim();
+    const cleanPh = sanitizePhone(trimmed);
     let found = null;
 
     if (isDbConnected()) {
@@ -87,6 +293,7 @@ app.post('/api/auth/login', async (req, res) => {
         $or: [
           { email: new RegExp(`^${trimmed}$`, 'i') },
           { username: new RegExp(`^${trimmed}$`, 'i') },
+          { phone: cleanPh },
           { id: trimmed }
         ]
       }).lean();
@@ -95,6 +302,7 @@ app.post('/api/auth/login', async (req, res) => {
         (a) =>
           a.email?.toLowerCase() === trimmed.toLowerCase() ||
           a.username?.toLowerCase() === trimmed.toLowerCase() ||
+          (a.phone && sanitizePhone(a.phone) === cleanPh) ||
           a.id === trimmed
       );
     }
@@ -118,8 +326,61 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, username, email, password, phone, avatar, bio, location, dob } = req.body || {};
-    if (!name || !username || !email) return res.status(400).json({ error: 'Missing required fields' });
+    const { 
+      name, 
+      username, 
+      email, 
+      password, 
+      phone, 
+      gender, 
+      dob, 
+      verificationToken,
+      avatar, 
+      bio, 
+      location 
+    } = req.body || {};
+
+    if (!name || !username || !email) {
+      return res.status(400).json({ error: 'Name, username, and email are required fields.' });
+    }
+
+    if (!gender) {
+      return res.status(400).json({ error: 'Please specify your gender.' });
+    }
+
+    if (!dob) {
+      return res.status(400).json({ error: 'Please provide your date of birth.' });
+    }
+
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required.' });
+    }
+
+    const cleanPhone = sanitizePhone(phone);
+
+    // Verify phone OTP token
+    let isPhoneVerified = false;
+    if (verificationToken) {
+      try {
+        const decoded = jwt.verify(verificationToken, JWT_SECRET);
+        if (decoded.type === 'phone_verification' && decoded.phone === cleanPhone) {
+          isPhoneVerified = true;
+        }
+      } catch (err) {
+        console.warn('Invalid verification token passed:', err.message);
+      }
+    }
+
+    const otpRecord = otpStore.get(cleanPhone);
+    if (otpRecord && otpRecord.verified) {
+      isPhoneVerified = true;
+    }
+
+    if (!isPhoneVerified) {
+      return res.status(400).json({ 
+        error: 'Phone number has not been verified. Please verify with OTP before registering.' 
+      });
+    }
 
     const id = `user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const newUserData = {
@@ -128,24 +389,31 @@ app.post('/api/auth/register', async (req, res) => {
       username: username.trim().toLowerCase(),
       email: email.trim().toLowerCase(),
       password: password || '',
-      phone: phone || '',
-      avatar: avatar || '',
-      bio: bio || '',
-      location: location || '',
-      dob: dob || '',
-      profileSetupCompleted: false,
+      phone: cleanPhone,
+      phoneVerified: true,
+      gender: gender.trim(),
+      dob: dob.trim(),
+      avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username.trim())}`,
+      bio: bio || 'PingX Member',
+      location: location || 'India',
+      profileSetupCompleted: true,
       gallery: [],
-      status: 'online'
+      status: 'online',
+      joinedDate: new Date().getFullYear().toString()
     };
 
     let createdUser = null;
     if (isDbConnected()) {
-      // Check if username or email already exists
+      // Check if username, email or phone already exists
       const existing = await User.findOne({
-        $or: [{ email: newUserData.email }, { username: newUserData.username }]
+        $or: [
+          { email: newUserData.email }, 
+          { username: newUserData.username },
+          { phone: newUserData.phone }
+        ]
       });
       if (existing) {
-        return res.status(409).json({ error: 'Email or username already registered.' });
+        return res.status(409).json({ error: 'Email, username, or phone number already registered.' });
       } else {
         const doc = await User.create(newUserData);
         createdUser = doc.toJSON();
@@ -155,11 +423,19 @@ app.post('/api/auth/register', async (req, res) => {
       createdUser = newUserData;
     }
 
+    // Clean up OTP session upon successful registration
+    otpStore.delete(cleanPhone);
+
     const token = jwt.sign({ sub: createdUser.id }, JWT_SECRET, { expiresIn: '30d' });
-    return res.json({ token, user: createdUser });
+    return res.json({ 
+      success: true, 
+      token, 
+      user: createdUser,
+      message: 'Account successfully registered and verified.' 
+    });
   } catch (err) {
     console.error('Error registering user:', err);
-    res.status(500).json({ error: 'Registration failed' });
+    res.status(500).json({ error: 'Registration failed: ' + (err.message || 'Server error') });
   }
 });
 

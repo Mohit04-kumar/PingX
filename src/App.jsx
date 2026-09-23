@@ -68,10 +68,17 @@ function AppContent() {
     if (user) {
       setCurrentView('app');
     } else {
-      handleOpenAuth('register');
+      handleOpenAuth('login');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Enforce security guard: Do not open dashboard directly without signing in
+  React.useEffect(() => {
+    if (currentView === 'app' && !user) {
+      setCurrentView('login');
+    }
+  }, [currentView, user]);
 
   return (
     <AIContextContainer activeTab={activeTab} activeChat={null} activeProduct={null}>

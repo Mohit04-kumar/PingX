@@ -69,7 +69,7 @@ export function ShopPreview({ onEnterApp }) {
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1e1b4b] text-white text-xs font-extrabold uppercase tracking-wide shadow-xs">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-100 text-[#7256c3] border border-violet-200 text-xs font-extrabold uppercase tracking-wide shadow-xs">
               <ShoppingBag className="w-3.5 h-3.5" />
               <span>MULTI-STORE PRICE SCANNER</span>
             </div>
@@ -85,16 +85,6 @@ export function ShopPreview({ onEnterApp }) {
               Direct store checkouts with verified merchant protection. Track price histories and discount drops without switching between multiple apps.
             </p>
           </div>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onEnterApp}
-            className="self-start md:self-auto inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold text-sm bg-[#7256c3] hover:bg-[#6348b6] shadow-md shadow-[#7256c3]/20 transition-all cursor-pointer"
-          >
-            <span>Explore All 10,000+ Deals</span>
-            <ArrowRight className="w-4 h-4" />
-          </motion.button>
         </div>
 
         {/* 4-Column High-Clarity Product Cards Grid (Matching ShopEase & Astra References) */}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { FileText, CheckCircle2, ArrowRight, Zap, Check, Tag } from 'lucide-react';
+import { FileText, CheckCircle2, Zap, Check, Tag } from 'lucide-react';
 
 export function AIPreview({ onEnterApp }) {
   const [activePrompt, setActivePrompt] = useState('summary');
@@ -12,19 +12,19 @@ export function AIPreview({ onEnterApp }) {
       <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-[#7256c3]/15 rounded-full blur-[140px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           
-          {/* Smart Assistant Card */}
+          {/* Left Column: Smart Assistant Live Demonstration Card */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="order-2 lg:order-1 bg-white rounded-3xl p-6 border border-[#e6e2f8] shadow-2xl space-y-5 relative overflow-hidden"
+            className="lg:col-span-6 bg-white rounded-3xl p-6 border border-[#e6e2f8] shadow-2xl space-y-5 relative overflow-hidden"
             style={{ boxShadow: '0 20px 45px -10px rgba(114, 86, 195, 0.12)' }}
           >
             
-            {/* Header */}
+            {/* Assistant Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3.5">
                 <div className="relative w-11 h-11 rounded-2xl overflow-hidden border border-slate-200 shadow-xs">
@@ -76,37 +76,46 @@ export function AIPreview({ onEnterApp }) {
               </button>
             </div>
 
-            {/* Conversational Output Display */}
+            {/* Output Result Card with Product Image */}
             <div className="p-4 rounded-2xl bg-[#f8f7ff] border border-[#e6e2f8] space-y-3 text-xs">
               {activePrompt === 'summary' ? (
                 <>
-                  <div className="flex items-center justify-between text-slate-600 font-medium">
+                  <div className="flex items-center justify-between text-[11px] border-b border-[#e6e2f8] pb-2 font-mono">
                     <span className="font-bold text-slate-900">Chat Recap • Product Planning Session</span>
-                    <span className="text-[10px] text-slate-400">10:45 AM</span>
+                    <span className="text-slate-400">10:45 AM</span>
                   </div>
-                  <div className="space-y-2 text-slate-700 leading-relaxed font-normal">
-                    <div className="flex items-start gap-2">
+                  <ul className="space-y-2 text-slate-700 leading-relaxed font-normal">
+                    <li className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#7256c3] mt-1.5 shrink-0" />
-                      <p><strong>Approved Milestone:</strong> The frontend royal purple redesign is locked for review.</p>
-                    </div>
-                    <div className="flex items-start gap-2">
+                      <span><strong>Approved Milestone:</strong> The frontend royal purple redesign is locked for review.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#7256c3] mt-1.5 shrink-0" />
-                      <p><strong>Action Item:</strong> Meeting confirmed at 6:00 PM near the main cafeteria with Rahul and team.</p>
-                    </div>
+                      <span><strong>Action Item:</strong> Meeting confirmed at 6:00 PM near the main cafeteria with Rahul and team.</span>
+                    </li>
+                  </ul>
+                  <div className="pt-2 border-t border-[#e6e2f8] flex items-center justify-between text-[11px]">
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> One-click copy ready
+                    </span>
+                    <span className="font-bold text-[#7256c3] hover:underline cursor-pointer">
+                      Insert into Chat →
+                    </span>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center justify-between text-slate-600 font-medium">
+                  <div className="flex items-center justify-between text-[11px] border-b border-[#e6e2f8] pb-2 font-mono">
                     <span className="font-bold text-slate-900">Store Scan • Sony WH-1000XM5</span>
                     <span className="text-[10px] text-slate-400">Live API</span>
                   </div>
 
+                  {/* Product Image Deal Snapshot */}
                   <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-[#e6e2f8]">
                     <img
                       src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&auto=format&fit=crop&q=80"
                       alt="Sony Headphones"
-                      className="w-11 h-11 rounded-lg object-cover border border-slate-200 shrink-0"
+                      className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -115,13 +124,13 @@ export function AIPreview({ onEnterApp }) {
                           Save ₹2,000
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-500">
+                      <p className="text-[11px] text-slate-500">
                         Flipkart: <strong className="text-[#7256c3]">₹26,990</strong> <span className="line-through text-slate-400">₹28,990</span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 text-slate-700 leading-relaxed font-normal">
+                  <div className="space-y-1 text-slate-700 leading-relaxed font-normal">
                     <div className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#7256c3] mt-1.5 shrink-0" />
                       <p>Includes ₹2,000 instant bank discount • 4 units left with guaranteed free delivery by Friday.</p>
@@ -129,13 +138,6 @@ export function AIPreview({ onEnterApp }) {
                   </div>
                 </>
               )}
-
-              <div className="pt-2 border-t border-[#e6e2f8] flex items-center justify-between text-[11px] text-[#7256c3] font-semibold">
-                <span className="flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-600" /> One-click copy ready</span>
-                <button onClick={onEnterApp} className="text-[#7256c3] hover:underline font-bold cursor-pointer">
-                  Insert into Chat →
-                </button>
-              </div>
             </div>
 
             {/* Interactive Prompt Input */}
@@ -153,17 +155,18 @@ export function AIPreview({ onEnterApp }) {
 
           </motion.div>
 
-          {/* Text Description Column */}
+          {/* Right Column: Visual Storytelling with Real Photo Card */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="order-1 lg:order-2 space-y-6"
+            className="lg:col-span-6 space-y-6"
           >
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1e1b4b] text-white text-xs font-extrabold uppercase tracking-wide shadow-xs">
+            {/* High-Contrast Section Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-100 text-[#7256c3] border border-violet-200 text-xs font-extrabold uppercase tracking-wide shadow-xs">
               <Zap className="w-3.5 h-3.5" />
-              <span>Smart Search & Facts</span>
+              <span>SMART SEARCH & FACTS</span>
             </div>
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight font-heading leading-tight">
@@ -173,40 +176,44 @@ export function AIPreview({ onEnterApp }) {
               </span>
             </h2>
 
-            <p className="text-slate-600 text-base sm:text-lg leading-relaxed font-normal">
-              Need quick information while in the middle of a chat? The PingX Assistant gives you 2-bullet concise facts, extracts action dates, and checks real-time price trends directly inside your workflow.
-            </p>
-
-            <div className="space-y-3.5 text-sm text-slate-700 font-medium">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-lg bg-[#f5f3ff] text-[#7256c3] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
-                <div>
-                  <strong className="text-slate-900">Zero Lengthy Babble:</strong> Short, scannable explanations tailored for quick decisions.
+            {/* Real Lifestyle Photo Card (Direct Visual Proof) */}
+            <div className="relative rounded-3xl overflow-hidden border border-[#e6e2f8] shadow-md group">
+              <img
+                src="https://images.unsplash.com/photo-1531482615713-2afd69097998?w=700&auto=format&fit=crop&q=80"
+                alt="Student getting instant answers on laptop"
+                className="w-full h-52 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1e1b4b]/85 via-[#1e1b4b]/20 to-transparent flex flex-col justify-end p-4">
+                <div className="flex items-center justify-between text-white">
+                  <span className="text-xs font-bold tracking-wide">2-Bullet Summaries & Deal Verifications</span>
+                  <span className="text-[10px] font-mono font-bold bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20">
+                    Instant Facts
+                  </span>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-lg bg-[#f5f3ff] text-[#7256c3] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
-                <div>
-                  <strong className="text-slate-900">Contextual Chat Recaps:</strong> Missed a long conversation? Generate a bullet summary in one tap.
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-lg bg-[#f5f3ff] text-[#7256c3] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
-                <div>
-                  <strong className="text-slate-900">Deal Verification:</strong> Check price histories and discount validity before completing any purchase.
-                </div>
+                <p className="text-[11px] text-slate-200 mt-1 font-medium">
+                  Zero lengthy paragraphs. Quick, verified factual insights while chatting or shopping.
+                </p>
               </div>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onEnterApp}
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm text-white bg-[#7256c3] hover:bg-[#6348b6] shadow-lg shadow-[#7256c3]/20 transition-all cursor-pointer"
-            >
-              <span>Try Smart Assistant</span>
-              <ArrowRight className="w-4 h-4" />
-            </motion.button>
+            {/* Visual Value Props */}
+            <div className="grid grid-cols-3 gap-3 pt-1">
+              <div className="p-3 rounded-2xl bg-white border border-[#e6e2f8] text-center shadow-xs">
+                <div className="text-lg mb-0.5">⚡</div>
+                <div className="text-xs font-bold text-slate-900">2-Bullet Facts</div>
+                <div className="text-[10px] text-slate-400">Zero babble</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-white border border-[#e6e2f8] text-center shadow-xs">
+                <div className="text-lg mb-0.5">📝</div>
+                <div className="text-xs font-bold text-slate-900">Chat Recaps</div>
+                <div className="text-[10px] text-slate-400">1-tap summaries</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-white border border-[#e6e2f8] text-center shadow-xs">
+                <div className="text-lg mb-0.5">🏷️</div>
+                <div className="text-xs font-bold text-slate-900">Price Drops</div>
+                <div className="text-[10px] text-slate-400">Store checks</div>
+              </div>
+            </div>
           </motion.div>
 
         </div>

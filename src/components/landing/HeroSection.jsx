@@ -140,7 +140,7 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
               transition={{ duration: 0.25 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wide text-white bg-[#1e1b4b] shadow-xs"
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wide bg-violet-100 text-[#7256c3] border border-violet-200 shadow-xs"
             >
               <span>{slide.tag}</span>
             </motion.div>
@@ -248,6 +248,23 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
                           Hey Alex! Did you check out the new PingX real-time update? The speed is unbelievable ⚡
                         </p>
                         <span className="text-[10px] text-slate-400 block text-right">10:14 AM</span>
+                      </div>
+                    </div>
+
+                    {/* Image Message in Chat */}
+                    <div className="flex items-start gap-2.5 max-w-[85%]">
+                      <div className="p-2 rounded-2xl rounded-tl-xs bg-white border border-slate-200 text-slate-800 shadow-xs space-y-1.5">
+                        <div className="w-48 h-24 rounded-xl overflow-hidden relative">
+                          <img
+                            src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&auto=format&fit=crop&q=80"
+                            alt="Shared product"
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute bottom-1.5 right-1.5 bg-[#7256c3] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">
+                            ₹4,299 on Myntra
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-snug px-1">Check out these Nike sneakers! 38% OFF 🔥</p>
                       </div>
                     </div>
 
@@ -470,6 +487,18 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
                   </div>
 
                   <div className="p-4 rounded-2xl bg-[#f8f7ff] border border-[#e6e2f8] space-y-3">
+                    {/* Visual Photo of Audio Stream */}
+                    <div className="w-full h-24 rounded-xl overflow-hidden relative">
+                      <img
+                        src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80"
+                        alt="Listening to Audio Stream"
+                        className="w-full h-full object-cover"
+                      />
+                      <span className="absolute bottom-2 right-2 bg-[#1e1b4b]/80 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                        Lossless FLAC • 24-bit
+                      </span>
+                    </div>
+
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <img

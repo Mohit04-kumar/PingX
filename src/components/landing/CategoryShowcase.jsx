@@ -70,16 +70,6 @@ export function CategoryShowcase({ onEnterApp }) {
               Skip opening 15 different browser tabs. PingX aggregates verified live prices and stock availability across major Indian retailers in one unified view.
             </p>
           </div>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onEnterApp}
-            className="self-start md:self-auto inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold text-sm bg-[#7256c3] hover:bg-[#6348b6] shadow-md shadow-[#7256c3]/20 transition-all cursor-pointer"
-          >
-            <span>Browse All Deals</span>
-            <ArrowRight className="w-4 h-4" />
-          </motion.button>
         </div>
 
         {/* 5-Column Clean Category Grid (Matching ThemeHunk & ShopEase) */}
