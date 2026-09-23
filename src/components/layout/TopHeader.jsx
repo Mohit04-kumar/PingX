@@ -195,7 +195,8 @@ export function TopHeader({
         <UserAccountAvatar
           user={{
             name: user?.name || 'PingX User',
-            email: user?.email || (user?.username ? `@${user.username}` : 'user@pingx.app'),
+            username: user?.username || user?.name || 'user',
+            email: user?.email || 'user@pingx.app',
             avatar: user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
           }}
           onProfileSave={(updated) => {

@@ -5,9 +5,10 @@ import {
   Root as PopoverRoot,
   Trigger as PopoverTrigger,
 } from '@radix-ui/react-popover';
-import { Eye, Package, User, Check } from 'lucide-react';
+import { Eye, Package, User, Check, LogOut, ExternalLink, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { cn } from '../../../lib/utils';
+import { useAuth } from '../../../context/AuthContext';
 
 const mockOrders = [
   { date: '2026-03-15', id: 'ORD-8492', progress: 100, status: 'delivered', item: 'Sony WH-1000XM5' },
@@ -26,6 +27,7 @@ export function UserAccountAvatar({
   onOrderView,
   className = '',
 }) {
+  const { logout } = useAuth();
   const [activeSection, setActiveSection] = useState(null);
   const [userData, setUserData] = useState(user);
   const [saveFeedback, setSaveFeedback] = useState(false);
@@ -35,6 +37,11 @@ export function UserAccountAvatar({
   React.useEffect(() => {
     if (user) setUserData(user);
   }, [user]);
+
+  const cleanHandle = (userData.username || userData.email?.split('@')[0] || userData.name || 'user')
+    .toLowerCase()
+    .replace(/@.*$/, '')
+    .replace(/\s+/g, '');
 
   const handleSectionClick = (section) => {
     setActiveSection(activeSection === section ? null : section);
@@ -66,13 +73,13 @@ export function UserAccountAvatar({
   };
 
   const renderEditProfile = () => (
-    <form className="flex flex-col gap-3 p-4" onSubmit={handleProfileSave}>
-      <div className="flex flex-col gap-1.5 text-left">
-        <label className="font-medium text-xs text-muted-foreground" htmlFor="avatar-name">
+    <form className="flex flex-col gap-3 p-4 bg-slate-50/80 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800" onSubmit={handleProfileSave}>
+      <div className="flex flex-col gap-1 text-left">
+        <label className="font-bold text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wider" htmlFor="avatar-name">
           Full Name
         </label>
         <input
-          className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+          className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none transition-colors focus:border-[#7256c3] focus:ring-1 focus:ring-[#7256c3]"
           defaultValue={userData.name}
           id="avatar-name"
           name="name"
@@ -80,12 +87,12 @@ export function UserAccountAvatar({
           type="text"
         />
       </div>
-      <div className="flex flex-col gap-1.5 text-left">
-        <label className="font-medium text-xs text-muted-foreground" htmlFor="avatar-email">
+      <div className="flex flex-col gap-1 text-left">
+        <label className="font-bold text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wider" htmlFor="avatar-email">
           Email Address
         </label>
         <input
-          className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+          className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none transition-colors focus:border-[#7256c3] focus:ring-1 focus:ring-[#7256c3]"
           defaultValue={userData.email}
           id="avatar-email"
           name="email"
@@ -95,7 +102,7 @@ export function UserAccountAvatar({
       </div>
 
       <button
-        className="mt-2 flex items-center justify-center gap-2 cursor-pointer rounded-lg bg-orange-600 px-4 py-2 font-bold text-xs text-white shadow-sm transition-all hover:bg-orange-700 active:scale-[0.98]"
+        className="mt-1 flex items-center justify-center gap-2 cursor-pointer rounded-xl bg-[#7256c3] hover:bg-[#6044b3] px-4 py-2.5 font-bold text-xs text-white shadow-sm transition-all active:scale-[0.98]"
         type="submit"
       >
         {saveFeedback ? (
@@ -110,26 +117,26 @@ export function UserAccountAvatar({
   );
 
   const renderLastOrders = () => (
-    <div className="flex flex-col gap-2.5 p-3.5 max-h-72 overflow-y-auto">
+    <div className="flex flex-col gap-2.5 p-3.5 max-h-72 overflow-y-auto bg-slate-50/80 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
       {orders.map((order) => (
         <div
-          className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 transition-colors hover:bg-muted/70 text-left"
+          className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 transition-colors hover:border-[#7256c3]/40 text-left shadow-2xs"
           key={order.id}
         >
           <div className="flex items-center justify-between">
-            <div className="font-bold text-xs text-foreground">{order.id}</div>
-            <div className="text-[10px] text-muted-foreground">{order.date}</div>
+            <div className="font-bold text-xs text-slate-900 dark:text-white">{order.id}</div>
+            <div className="text-[10px] text-slate-400">{order.date}</div>
           </div>
           {order.item && (
-            <div className="text-xs font-medium text-foreground truncate">{order.item}</div>
+            <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{order.item}</div>
           )}
           <div className="flex items-center gap-2.5">
-            <div className="flex-1 space-y-1.5">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="font-semibold text-foreground capitalize">{order.status}</span>
-                <span className="text-muted-foreground font-mono">{order.progress}%</span>
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 capitalize">{order.status}</span>
+                <span className="text-slate-400 font-mono">{order.progress}%</span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <motion.div
                   animate={shouldReduceMotion ? {} : { width: `${order.progress}%` }}
                   className={`h-full rounded-full ${getStatusColor(order.status)}`}
@@ -140,7 +147,7 @@ export function UserAccountAvatar({
             </div>
             <button
               aria-label="View Order"
-              className="flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-background p-1.5 transition-colors hover:border-orange-500 hover:text-orange-500"
+              className="flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1.5 transition-colors hover:border-[#7256c3] hover:text-[#7256c3]"
               onClick={() => onOrderView?.(order.id)}
               type="button"
             >
@@ -157,7 +164,7 @@ export function UserAccountAvatar({
       <PopoverTrigger asChild>
         <button
           className={cn(
-            'group relative flex cursor-pointer items-center gap-2 rounded-full border border-border/80 bg-background p-0.5 transition-all hover:scale-105 hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40',
+            'group relative flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5 transition-all hover:scale-105 hover:border-[#7256c3] focus:outline-none focus:ring-2 focus:ring-[#7256c3]/40 shadow-xs',
             className
           )}
           type="button"
@@ -169,27 +176,34 @@ export function UserAccountAvatar({
             draggable={false}
             src={userData.avatar}
           />
-          <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+          <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
         </button>
       </PopoverTrigger>
 
       <PopoverPortal>
         <PopoverContent
           align="end"
-          className="z-50 w-72 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl text-foreground"
+          className="z-[999] w-80 overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl text-slate-900 dark:text-slate-100 ring-1 ring-black/5 animate-scaleUp"
           onOpenAutoFocus={(e) => e.preventDefault()}
-          sideOffset={10}
+          sideOffset={12}
         >
-          {/* Header Profile Summary */}
-          <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/20">
+          {/* Header Profile Summary with Opaque Solid Background */}
+          <div className="flex items-center gap-3 p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
             <img
               alt={userData.name}
-              className="rounded-full object-cover size-11 border border-border"
+              className="rounded-full object-cover size-12 border-2 border-white dark:border-slate-700 shadow-xs shrink-0"
               src={userData.avatar}
             />
             <div className="flex-1 min-w-0 text-left">
-              <div className="font-bold text-sm truncate text-foreground">{userData.name}</div>
-              <div className="text-xs text-muted-foreground truncate">{userData.email}</div>
+              <div className="font-extrabold text-sm truncate text-slate-900 dark:text-white font-heading">
+                {userData.name}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                @{cleanHandle}
+              </div>
+              <div className="text-[11px] text-slate-400 truncate pt-0.5">
+                {userData.email}
+              </div>
             </div>
           </div>
 
@@ -198,22 +212,22 @@ export function UserAccountAvatar({
             initial={shouldReduceMotion ? {} : { height: 'auto' }}
             transition={{ bounce: 0, duration: 0.2, type: 'spring' }}
           >
-            <div className="flex flex-col divide-y divide-border text-sm">
+            <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800 text-xs">
               {/* Profile Toggle */}
               <button
                 className={cn(
-                  'flex w-full cursor-pointer items-center justify-between px-4 py-3 font-semibold text-xs transition-colors',
+                  'flex w-full cursor-pointer items-center justify-between px-4 py-3 font-semibold transition-colors text-left',
                   activeSection === 'profile'
-                    ? 'bg-orange-500/10 text-orange-500'
-                    : 'text-foreground hover:bg-muted/50'
+                    ? 'bg-violet-50 dark:bg-violet-950/40 text-[#7256c3] dark:text-violet-300'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 )}
                 onClick={() => handleSectionClick('profile')}
                 type="button"
               >
                 <span className="flex items-center gap-2">
-                  <User size={15} /> Edit Profile Details
+                  <User size={15} className="text-[#7256c3]" /> Edit Profile Details
                 </span>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground">
+                <span className="text-[10px] uppercase font-bold text-slate-400">
                   {activeSection === 'profile' ? 'Hide' : 'Open'}
                 </span>
               </button>
@@ -242,18 +256,18 @@ export function UserAccountAvatar({
               {/* Orders Toggle */}
               <button
                 className={cn(
-                  'flex w-full cursor-pointer items-center justify-between px-4 py-3 font-semibold text-xs transition-colors',
+                  'flex w-full cursor-pointer items-center justify-between px-4 py-3 font-semibold transition-colors text-left',
                   activeSection === 'orders'
-                    ? 'bg-orange-500/10 text-orange-500'
-                    : 'text-foreground hover:bg-muted/50'
+                    ? 'bg-violet-50 dark:bg-violet-950/40 text-[#7256c3] dark:text-violet-300'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 )}
                 onClick={() => handleSectionClick('orders')}
                 type="button"
               >
                 <span className="flex items-center gap-2">
-                  <Package size={15} /> Recent Orders & Tracking
+                  <Package size={15} className="text-[#7256c3]" /> Recent Orders & Tracking
                 </span>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground">
+                <span className="text-[10px] uppercase font-bold text-slate-400">
                   {activeSection === 'orders' ? 'Hide' : 'Open'}
                 </span>
               </button>
@@ -278,6 +292,22 @@ export function UserAccountAvatar({
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Sign Out Action Button */}
+              <button
+                onClick={() => {
+                  if (logout) logout();
+                }}
+                className="flex w-full cursor-pointer items-center justify-between px-4 py-3 font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left"
+                type="button"
+              >
+                <span className="flex items-center gap-2">
+                  <LogOut size={15} /> Sign Out
+                </span>
+                <span className="text-[10px] uppercase font-bold text-red-400">
+                  PingX
+                </span>
+              </button>
             </div>
           </motion.div>
         </PopoverContent>

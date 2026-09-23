@@ -170,14 +170,53 @@ export function AuthProvider({ children }) {
 
   const normalizeUsername = (value) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
 
-  const login = (emailOrUsername, password) => {
+  const login = async (emailOrUsername, password) => {
     const sanitized = String(emailOrUsername || '').trim();
-    
-    // Find matching account or create fallback user profile immediately
+
+    // 1. Authenticate with backend service
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: sanitized, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed. Please check your credentials.');
+      }
+      if (data.token && data.user) {
+        setToken(data.token);
+        setUser(data.user);
+        setIsAuthenticated(true);
+        setIsGuest(false);
+        safeStorage.setItem('pingx_token', data.token);
+        safeStorage.setItem('pingx_active_user', data.user);
+        return { success: true, user: data.user };
+      }
+    } catch (netErr) {
+      if (netErr.message && !netErr.message.includes('Failed to fetch') && !netErr.message.includes('NetworkError')) {
+        throw netErr;
+      }
+    }
+
+    // 2. Offline / Local fallback verification
     const found = accounts.find((a) => 
       a.email?.toLowerCase() === sanitized.toLowerCase() || 
       a.username?.toLowerCase() === sanitized.toLowerCase()
-    ) || {
+    );
+
+    if (found) {
+      if (found.password && password && found.password !== password) {
+        throw new Error('Incorrect password. Please try again.');
+      }
+      setUser(found);
+      setIsAuthenticated(true);
+      setIsGuest(false);
+      safeStorage.setItem('pingx_active_user', found);
+      return { success: true, user: found };
+    }
+
+    const fallbackUser = {
       id: `usr_${Date.now()}`,
       name: sanitized.includes('@') ? sanitized.split('@')[0] : sanitized,
       username: sanitized.replace(/\s+/g, '').toLowerCase(),
@@ -188,33 +227,14 @@ export function AuthProvider({ children }) {
       location: 'India',
       joinedDate: new Date().getFullYear().toString()
     };
-
-    setUser(found);
+    setUser(fallbackUser);
     setIsAuthenticated(true);
     setIsGuest(false);
-    safeStorage.setItem('pingx_active_user', found);
-
-    // Sync with remote server if active
-    fetch(`${API_BASE}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identity: sanitized, password })
-    })
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.token && json.user) {
-          setToken(json.token);
-          setUser(json.user);
-          safeStorage.setItem('pingx_token', json.token);
-          safeStorage.setItem('pingx_active_user', json.user);
-        }
-      })
-      .catch(() => {});
-
-    return { success: true };
+    safeStorage.setItem('pingx_active_user', fallbackUser);
+    return { success: true, user: fallbackUser };
   };
 
-  const register = ({ name, username, email, phone, gender, dob, password, verificationToken, avatar, bio, location }) => {
+  const register = async ({ name, username, email, phone, gender, dob, password, avatar, bio, location }) => {
     const cleanUsername = (username || name || 'user').toLowerCase().replace(/\s+/g, '');
     const cleanPhone = String(phone || '').replace(/[\s()-]/g, '');
     const newUser = {
@@ -244,33 +264,31 @@ export function AuthProvider({ children }) {
     safeStorage.setItem('pingx_active_user', newUser);
 
     // Sync with remote backend service
-    fetch(`${API_BASE}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        username: cleanUsername,
-        email,
-        phone: cleanPhone,
-        gender,
-        dob,
-        password,
-        verificationToken,
-        avatar: newUser.avatar,
-        bio: newUser.bio,
-        location: newUser.location
-      })
-    })
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.token && json.user) {
-          setToken(json.token);
-          setUser(json.user);
-          safeStorage.setItem('pingx_token', json.token);
-          safeStorage.setItem('pingx_active_user', json.user);
-        }
-      })
-      .catch(() => {});
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          username: cleanUsername,
+          email,
+          phone: cleanPhone,
+          gender,
+          dob,
+          password,
+          avatar: newUser.avatar,
+          bio: newUser.bio,
+          location: newUser.location
+        })
+      });
+      const json = await res.json();
+      if (res.ok && json.token && json.user) {
+        setToken(json.token);
+        setUser(json.user);
+        safeStorage.setItem('pingx_token', json.token);
+        safeStorage.setItem('pingx_active_user', json.user);
+      }
+    } catch (e) {}
 
     return { success: true, user: newUser };
   };
@@ -307,36 +325,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithPhoneOtp = async (identity, code) => {
-    return loginWithOtp(identity, code);
-  };
-
-  const loginWithFirebase = async (firebaseData) => {
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/firebase/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(firebaseData)
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Firebase phone authentication failed.');
-      }
-      if (data.token && data.user) {
-        setToken(data.token);
-        setUser(data.user);
-        setIsAuthenticated(true);
-        setIsGuest(false);
-        safeStorage.setItem('pingx_token', data.token);
-        safeStorage.setItem('pingx_active_user', data.user);
-        return { success: true, user: data.user };
-      }
-      return data;
-    } catch (err) {
-      console.error('loginWithFirebase error:', err);
-      throw err;
-    }
-  };
 
   const logout = () => {
     setUser(null);
@@ -506,9 +494,6 @@ export function AuthProvider({ children }) {
       setAuthMode,
       openAuthModal,
       login,
-      loginWithOtp,
-      loginWithPhoneOtp,
-      loginWithFirebase,
       register,
       logout,
       switchAccount,

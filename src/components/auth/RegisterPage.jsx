@@ -14,7 +14,6 @@ import {
   Phone, 
   Calendar, 
   KeyRound, 
-  RefreshCw, 
   AlertCircle,
   Sparkles,
   Check
@@ -23,42 +22,26 @@ import { PingXLogo } from '../common/PingXLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { authApi } from '../../services/authApi';
-import { 
-  isFirebaseConfigured, 
-  sendFirebasePhoneOtp, 
-  verifyFirebasePhoneOtp, 
-  formatE164Phone 
-} from '../../services/firebase';
 
 export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuccess }) {
   const { register } = useAuth();
   const { addToast } = useToast();
 
-  // Primary Detailed Fields
+  // Primary Registration Fields
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [gender, setGender] = useState('Male'); // 'Male' | 'Female' | 'Other' | 'Prefer not to say'
   const [dob, setDob] = useState('2000-01-15');
   const [phoneCountry, setPhoneCountry] = useState('+91');
-  const [phone, setPhone] = useState('7981154788');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Backend OTP Email Verification States
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState('');
-  const [phoneVerified, setPhoneVerified] = useState(false);
-  const [firebaseConfirmationResult, setFirebaseConfirmationResult] = useState(null);
-  const [firebaseToken, setFirebaseToken] = useState('');
-  const [firebaseUid, setFirebaseUid] = useState('');
-  const [verificationToken, setVerificationToken] = useState('');
-  const [resendCooldown, setResendCooldown] = useState(0);
 
   // Quick Social Modals
   const [showGoogleModal, setShowGoogleModal] = useState(false);
@@ -77,92 +60,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
   const strength = getPasswordStrength();
   const strengthLabels = ['Too weak', 'Fair', 'Good', 'Strong', 'Excellent'];
   const strengthColors = ['bg-slate-200', 'bg-red-400', 'bg-amber-400', 'bg-[#818cf8]', 'bg-[#7256c3]'];
-
-  // Send SMS OTP via Firebase Phone Auth (with backend gateway fallback)
-  const handleSendPhoneOtp = async () => {
-    setOtpError('');
-    const cleanPh = phone.trim().replace(/\D/g, '');
-    if (!cleanPh || cleanPh.length < 7) {
-      setOtpError('Please enter a valid mobile number (e.g. 7981154788).');
-      return;
-    }
-
-    const fullNumber = formatE164Phone(phoneCountry, cleanPh);
-    setOtpLoading(true);
-
-    try {
-      if (isFirebaseConfigured()) {
-        const confirmation = await sendFirebasePhoneOtp(fullNumber, 'recaptcha-container');
-        setFirebaseConfirmationResult(confirmation);
-        setOtpSent(true);
-        setOtpLoading(false);
-        setResendCooldown(30);
-        addToast(`Firebase SMS OTP dispatched to ${fullNumber}! Check your phone messages.`, 'success', 6000);
-      } else {
-        // Local / backend fallback if Firebase keys are not yet pasted into .env
-        const data = await authApi.sendOtp(fullNumber, 'registration');
-        setOtpSent(true);
-        setOtpLoading(false);
-        setResendCooldown(30);
-        if (data && data.devOtp) {
-          setOtpCode(data.devOtp);
-        }
-        addToast(
-          `SMS OTP initiated for ${fullNumber}. (Paste Firebase keys in .env for direct cellular delivery)`,
-          'info',
-          7000
-        );
-      }
-
-      const interval = setInterval(() => {
-        setResendCooldown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } catch (err) {
-      setOtpLoading(false);
-      setOtpError(err.message || 'Failed to dispatch phone verification code.');
-      addToast(err.message || 'Failed to send SMS code.', 'error');
-    }
-  };
-
-  // Verify Phone OTP (Firebase or Backend)
-  const handleVerifyPhoneOtp = async () => {
-    setOtpError('');
-    if (!otpCode || otpCode.trim().length !== 6) {
-      setOtpError('Please enter the 6-digit code received via SMS.');
-      return;
-    }
-
-    setOtpLoading(true);
-    try {
-      if (firebaseConfirmationResult) {
-        const result = await verifyFirebasePhoneOtp(firebaseConfirmationResult, otpCode);
-        setOtpLoading(false);
-        setPhoneVerified(true);
-        setFirebaseToken(result.idToken);
-        setFirebaseUid(result.uid);
-        addToast('Phone number verified successfully via Firebase!', 'success');
-      } else {
-        const fullNumber = formatE164Phone(phoneCountry, phone);
-        const data = await authApi.verifyOtp(fullNumber, otpCode.trim());
-        setOtpLoading(false);
-        if (data.verified) {
-          setPhoneVerified(true);
-          if (data.verificationToken) setVerificationToken(data.verificationToken);
-          addToast('Phone number verified successfully!', 'success');
-        }
-      }
-    } catch (err) {
-      setOtpLoading(false);
-      setOtpError(err.message || 'Incorrect verification code. Please check your SMS and try again.');
-      addToast(err.message || 'Invalid verification code.', 'error');
-    }
-  };
+  const passwordsMatch = password && confirmPassword && password === confirmPassword;
 
   // Main Registration Form Submission
   const handleSubmit = async (e) => {
@@ -197,12 +95,6 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
       return;
     }
 
-    if (!phoneVerified) {
-      setError('Please verify your phone number via 6-digit SMS code before completing registration.');
-      addToast('Phone number must be verified via SMS OTP.', 'warning');
-      return;
-    }
-
     if (!email.trim() || !email.includes('@')) {
       setError('Please enter a valid email address.');
       return;
@@ -213,13 +105,18 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please ensure both passwords match.');
+      return;
+    }
+
     if (!agreedToTerms) {
       setError('Please accept the Terms of Service to create your account.');
       return;
     }
 
     const cleanDigits = String(phone || '').replace(/\D/g, '');
-    const fullPhone = formatE164Phone(phoneCountry, cleanDigits);
+    const fullPhone = cleanDigits ? `${phoneCountry}${cleanDigits}` : '';
     setLoading(true);
 
     try {
@@ -229,13 +126,9 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
         username: username.trim() || name.toLowerCase().replace(/\s+/g, ''),
         email: email.trim(),
         phone: fullPhone,
-        phoneVerified: true,
-        firebaseToken,
-        firebaseUid,
         gender,
         dob,
-        password,
-        verificationToken
+        password
       });
 
       // 2. Sync local Auth Context
@@ -244,15 +137,13 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
         username: username.trim() || name.toLowerCase().replace(/\s+/g, ''),
         email: email.trim(),
         phone: fullPhone,
-        phoneVerified: true,
         gender,
         dob,
-        password,
-        verificationToken
+        password
       });
 
       setLoading(false);
-      addToast(`Welcome to PingX, ${name.split(' ')[0]}! Your account is verified and ready.`, 'success');
+      addToast(`Welcome to PingX, ${name.split(' ')[0]}! Your account is created and ready.`, 'success');
       if (onAuthSuccess) onAuthSuccess();
       else onNavigateToLanding();
     } catch (err) {
@@ -301,7 +192,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
               </h2>
               
               <p className="text-xs xl:text-sm text-slate-600 leading-relaxed font-normal">
-                Every member on PingX is verified with encrypted phone authentication, real-time deal alerts, and private peer-to-peer audio messaging.
+                Every member on PingX enjoys private peer-to-peer audio messaging, real-time deal alerts, and multi-store comparison across India's top platforms.
               </p>
             </div>
 
@@ -313,8 +204,8 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                     <KeyRound className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-900">Backend OTP Verification</p>
-                    <p className="text-[11px] text-slate-500">Cryptographically generated & stored codes</p>
+                    <p className="text-xs font-bold text-slate-900">Direct Password Protection</p>
+                    <p className="text-[11px] text-slate-500">Fast sign-in with your chosen password</p>
                   </div>
                 </div>
 
@@ -323,8 +214,8 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-900">Zero Fake Accounts</p>
-                    <p className="text-[11px] text-slate-500">Only verified phone numbers allowed</p>
+                    <p className="text-xs font-bold text-slate-900">Encrypted 30-Day Session</p>
+                    <p className="text-[11px] text-slate-500">Seamless sign-in across your devices</p>
                   </div>
                 </div>
 
@@ -345,16 +236,16 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
             </div>
           </div>
 
-          {/* Right Form Column: Detailed Multi-Field Registration */}
+          {/* Right Form Column: Clean Multi-Field Registration */}
           <div className="lg:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-center">
             <div className="max-w-xl mx-auto w-full space-y-5">
               
               <div className="space-y-1">
                 <h1 className="text-2xl font-extrabold font-heading text-slate-900 tracking-tight">
-                  Create your verified account
+                  Create your PingX account
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-500">
-                  Please provide your accurate details for secure account activation.
+                  Set up your profile and password for fast, secure access.
                 </p>
               </div>
 
@@ -454,198 +345,143 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                   </div>
                 </div>
 
-                {/* 3. Phone Number & SMS Verification (Firebase Phone Auth) */}
-                <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2.5">
-                  <div className="flex items-center justify-between">
+                {/* 3. Email & Phone Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-[#7256c3]" />
-                      <span>Phone Number & SMS Verification *</span>
+                      <Mail className="w-3.5 h-3.5 text-[#7256c3]" />
+                      <span>Email Address *</span>
                     </label>
-                    {phoneVerified && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                        <Check className="w-3 h-3" /> Verified via Firebase
-                      </span>
-                    )}
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="alex@example.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#7256c3]/25 focus:border-[#7256c3] focus:bg-white transition-all"
+                      required
+                    />
                   </div>
 
-                  {/* Phone Input with Country Code & Send SMS Button */}
-                  <div className="flex gap-2">
-                    <select
-                      value={phoneCountry}
-                      onChange={(e) => setPhoneCountry(e.target.value)}
-                      disabled={phoneVerified}
-                      className="px-2.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-bold outline-none cursor-pointer shrink-0 disabled:bg-slate-100"
-                    >
-                      <option value="+91">🇮🇳 +91</option>
-                      <option value="+1">🇺🇸 +1</option>
-                      <option value="+44">🇬🇧 +44</option>
-                      <option value="+971">🇦🇪 +971</option>
-                      <option value="+65">🇸🇬 +65</option>
-                    </select>
-
-                    <div className="relative flex-1">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-[#7256c3]" />
+                      <span>Phone Number</span>
+                    </label>
+                    <div className="flex gap-1.5">
+                      <select
+                        value={phoneCountry}
+                        onChange={(e) => setPhoneCountry(e.target.value)}
+                        className="px-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-xs font-bold outline-none cursor-pointer shrink-0"
+                      >
+                        <option value="+91">🇮🇳 +91</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+971">🇦🇪 +971</option>
+                        <option value="+65">🇸🇬 +65</option>
+                      </select>
                       <input
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        disabled={phoneVerified}
                         placeholder="79811 54788"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs sm:text-sm font-mono font-medium focus:outline-none focus:border-[#7256c3] disabled:bg-slate-100 disabled:text-slate-600"
-                        required
+                        className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-xs sm:text-sm font-mono font-medium focus:outline-none focus:ring-2 focus:ring-[#7256c3]/25 focus:border-[#7256c3] focus:bg-white transition-all"
                       />
                     </div>
-
-                    {!phoneVerified ? (
-                      <button
-                        type="button"
-                        onClick={handleSendPhoneOtp}
-                        disabled={otpLoading || resendCooldown > 0}
-                        className="px-3.5 py-2.5 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 disabled:opacity-50"
-                      >
-                        {otpLoading ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : resendCooldown > 0 ? (
-                          `${resendCooldown}s`
-                        ) : otpSent ? (
-                          'Resend SMS'
-                        ) : (
-                          'Send SMS Code'
-                        )}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPhoneVerified(false);
-                          setOtpSent(false);
-                          setOtpCode('');
-                          setFirebaseConfirmationResult(null);
-                        }}
-                        className="px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-xs font-bold cursor-pointer shrink-0"
-                      >
-                        Change
-                      </button>
-                    )}
                   </div>
-
-                  {/* Firebase Invisible reCAPTCHA Mount Container */}
-                  <div id="recaptcha-container"></div>
-
-                  {/* OTP Error Notice */}
-                  {otpError && (
-                    <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1">
-                      ⚠️ {otpError}
-                    </p>
-                  )}
-
-                  {/* 6-Digit SMS OTP Input Box (Appears after SMS is dispatched) */}
-                  <AnimatePresence>
-                    {otpSent && !phoneVerified && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="p-3 rounded-xl bg-white border border-[#e6e2f8] shadow-xs space-y-2.5"
-                      >
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                            <KeyRound className="w-3.5 h-3.5 text-[#7256c3]" />
-                            Enter 6-Digit Code received on your mobile:
-                          </span>
-                          <span className="text-[11px] text-slate-400 font-mono">
-                            Expires in 5 mins
-                          </span>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            maxLength={6}
-                            value={otpCode}
-                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                            placeholder="000000"
-                            className="flex-1 text-center tracking-widest text-base font-mono font-extrabold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-slate-900 outline-none focus:border-[#7256c3]"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleVerifyPhoneOtp}
-                            disabled={otpLoading || otpCode.length !== 6}
-                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors disabled:opacity-50"
-                          >
-                            {otpLoading ? 'Verifying...' : 'Verify Phone ✓'}
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-slate-500">
-                          🔒 Direct SMS verification via Firebase Authentication.
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
 
-                {/* 4. Email Address */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-[#7256c3]" />
-                      Email Address *
-                    </span>
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. mr.mohitkumar004@gmail.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#7256c3] focus:bg-white"
-                    required
-                  />
-                </div>
-
-                {/* 5. Password with Strength Indicator */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    Password *
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                      className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#7256c3]/25 focus:border-[#7256c3] focus:bg-white transition-all font-medium"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {password && (
-                    <div className="pt-1.5 space-y-1">
-                      <div className="flex gap-1 h-1.5">
-                        {[1, 2, 3, 4].map((step) => (
-                          <div
-                            key={step}
-                            className={`flex-1 rounded-full transition-all duration-300 ${
-                              strength >= step ? strengthColors[strength] : 'bg-slate-200'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium">
-                        <span>Strength: {strengthLabels[strength]}</span>
-                        <span>Min 6 characters</span>
-                      </div>
+                {/* 4. Password & Confirm Password Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  
+                  {/* Password */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Create Password *
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Min 6 characters"
+                        className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#7256c3]/25 focus:border-[#7256c3] focus:bg-white transition-all font-medium"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
-                  )}
+
+                    {password && (
+                      <div className="pt-1 space-y-1">
+                        <div className="flex gap-1 h-1.5">
+                          {[1, 2, 3, 4].map((step) => (
+                            <div
+                              key={step}
+                              className={`flex-1 rounded-full transition-all duration-300 ${
+                                strength >= step ? strengthColors[strength] : 'bg-slate-200'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium">
+                          <span>Strength: {strengthLabels[strength]}</span>
+                          <span>Min 6 characters</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                      <span>Confirm Password *</span>
+                      {passwordsMatch && (
+                        <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Matches
+                        </span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter password"
+                        className={`w-full pl-10 pr-10 py-2.5 rounded-xl border bg-slate-50/50 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:bg-white transition-all font-medium ${
+                          confirmPassword && !passwordsMatch 
+                            ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
+                            : passwordsMatch
+                            ? 'border-emerald-300 focus:border-emerald-500 focus:ring-emerald-200'
+                            : 'border-slate-200 focus:border-[#7256c3] focus:ring-[#7256c3]/25'
+                        }`}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                    {confirmPassword && !passwordsMatch && (
+                      <p className="text-[10px] text-red-500 font-medium pt-1">
+                        Passwords do not match yet.
+                      </p>
+                    )}
+                  </div>
+
                 </div>
 
-                {/* 6. Agree to Terms */}
+                {/* 5. Agree to Terms */}
                 <div className="flex items-start gap-2 pt-0.5">
                   <input
                     type="checkbox"
@@ -659,19 +495,19 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                   </label>
                 </div>
 
-                {/* 7. Submit Button */}
+                {/* 6. Submit Button */}
                 <motion.button
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white shadow-lg shadow-[#7256c3]/25 bg-[#7256c3] hover:bg-[#6348b6] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                  className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white shadow-lg shadow-[#7256c3]/25 bg-[#7256c3] hover:bg-[#6348b6] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-60"
                 >
                   {loading ? (
                     <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>Complete Registration</span>
+                      <span>Create My PingX Account</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -682,7 +518,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
               <div className="relative my-3 flex py-1 items-center">
                 <div className="flex-grow border-t border-slate-200" />
                 <span className="flex-shrink mx-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  Or instant verification via
+                  Or instant access via
                 </span>
                 <div className="flex-grow border-t border-slate-200" />
               </div>
@@ -710,7 +546,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                     setEmail('apple.id@icloud.com');
                     setPassword('SecurePass123!');
                     setGender('Prefer not to say');
-                    addToast('Apple ID verified! Click Complete Registration.', 'info');
+                    addToast('Apple ID verified! Click Create My PingX Account.', 'info');
                   }}
                   className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer shadow-2xs hover:border-[#7256c3]"
                 >

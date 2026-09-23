@@ -439,7 +439,9 @@ export function DashboardView({ setActiveTab }) {
               />
               <div className="leading-tight">
                 <p className="font-bold text-slate-900 text-sm font-heading">{user?.name || 'Explorer'}</p>
-                <p className="text-slate-500 text-xs font-medium">@{user?.username || 'user'}</p>
+                <p className="text-slate-500 text-xs font-medium">
+                  @{(user?.username || user?.email?.split('@')[0] || 'user').replace(/@.*$/, '')}
+                </p>
                 <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-violet-100 text-[#7256c3] text-[10px] font-bold">
                   {user?.role || 'PingX Member'}
                 </span>

@@ -119,24 +119,24 @@ export function AIBranch({
 
         {/* AI Response */}
         <div className="flex justify-start">
-          <div className="relative max-w-[90%] rounded-2xl rounded-tl-xs border border-border bg-card p-4 shadow-sm text-foreground text-sm">
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
-              <div className="flex items-center gap-2 text-xs font-bold text-orange-500">
+          <div className="relative max-w-[90%] rounded-2xl rounded-tl-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm text-slate-800 dark:text-slate-100 text-sm">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#7256c3]">
                 <GitBranch size={13} />
                 <span>{currentBranch.title || `PingX AI • Alternative ${activeIdx + 1}`}</span>
               </div>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer transition-colors"
                 type="button"
                 title="Copy response"
               >
-                {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                 <span>{copied ? 'Copied' : 'Copy'}</span>
               </button>
             </div>
 
-            <div className="whitespace-pre-line leading-relaxed text-foreground/90">
+            <div className="whitespace-pre-line leading-relaxed text-slate-700 dark:text-slate-200">
               {currentBranch.aiResponse}
             </div>
 

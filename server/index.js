@@ -321,75 +321,15 @@ app.post('/api/auth/otp/login', async (req, res) => {
   }
 });
 
-// 4. Firebase Phone Authentication Sign-In / User Provisioning
-app.post('/api/auth/firebase/login', async (req, res) => {
-  try {
-    const { phoneNumber, idToken, uid, name, email } = req.body || {};
-    if (!phoneNumber) {
-      return res.status(400).json({ error: 'Verified phone number is required.' });
-    }
-
-    const cleanPh = sanitizePhone(phoneNumber);
-    let found = null;
-
-    if (isDbConnected()) {
-      found = await User.findOne({
-        $or: [
-          { phone: cleanPh },
-          { phone: phoneNumber }
-        ]
-      }).lean();
-    } else {
-      found = data.accounts.find(
-        (a) => a.phone && (sanitizePhone(a.phone) === cleanPh || a.phone === phoneNumber)
-      );
-    }
-
-    if (!found) {
-      // Auto-provision user account for first-time phone sign in
-      const id = `user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      const cleanDigits = cleanPh.replace(/\D/g, '');
-      const fallbackName = name || `User ${cleanDigits.slice(-4) || 'PingX'}`;
-      const fallbackUsername = `user_${cleanDigits.slice(-6) || Math.random().toString(36).substring(2, 7)}`;
-      const fallbackEmail = email || `${cleanDigits || id}@pingx.internal`;
-
-      found = {
-        id,
-        name: fallbackName,
-        username: fallbackUsername,
-        email: fallbackEmail,
-        phone: cleanPh || phoneNumber,
-        phoneVerified: true,
-        firebaseUid: uid || '',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanPh || id}`,
-        bio: 'PingX Member',
-        status: 'online',
-        joinedDate: new Date().getFullYear().toString()
-      };
-
-      if (isDbConnected()) {
-        await User.create(found);
-      } else {
-        data.accounts.unshift(found);
-      }
-    }
-
-    const token = jwt.sign({ sub: found.id }, JWT_SECRET, { expiresIn: '30d' });
-    return res.json({ token, user: found, message: 'Signed in successfully via Firebase Phone Auth.' });
-  } catch (err) {
-    console.error('Firebase phone login error:', err);
-    res.status(500).json({ error: 'Firebase authentication failed.' });
-  }
-});
-
 // ---------------------------------------------------------------------------
-// Standard Auth Endpoints (Register & Login)
+// Standard Auth Endpoints (Register & Login with Password)
 // ---------------------------------------------------------------------------
 
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { identity, password } = req.body || {};
-    if (!identity) return res.status(400).json({ error: 'Missing identity' });
+    if (!identity) return res.status(400).json({ error: 'Please enter your email or username.' });
+    if (!password) return res.status(400).json({ error: 'Please enter your password.' });
 
     const trimmed = String(identity).trim();
     const cleanPh = sanitizePhone(trimmed);
@@ -414,17 +354,17 @@ app.post('/api/auth/login', async (req, res) => {
       );
     }
 
-    // If password provided and user has a password set, verify matching
-    if (found && found.password && password && found.password !== password) {
-      return res.status(401).json({ error: 'Invalid password. Please check your credentials.' });
-    }
-
     if (!found) {
       return res.status(404).json({ error: 'Account not found. Please register first.' });
     }
 
+    // Verify matching password
+    if (found.password && found.password !== password) {
+      return res.status(401).json({ error: 'Incorrect password. Please try again.' });
+    }
+
     const token = jwt.sign({ sub: found.id }, JWT_SECRET, { expiresIn: '30d' });
-    return res.json({ token, user: found });
+    return res.json({ token, user: found, message: 'Signed in successfully!' });
   } catch (err) {
     console.error('Error logging in:', err);
     res.status(500).json({ error: 'Login failed' });
@@ -439,12 +379,8 @@ app.post('/api/auth/register', async (req, res) => {
       email, 
       password, 
       phone = '', 
-      phoneVerified = false,
       gender, 
       dob, 
-      verificationToken,
-      firebaseToken,
-      firebaseUid,
       avatar, 
       bio, 
       location 
@@ -452,6 +388,10 @@ app.post('/api/auth/register', async (req, res) => {
 
     if (!name || !username || !email) {
       return res.status(400).json({ error: 'Name, username, and email are required fields.' });
+    }
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
     }
 
     if (!gender) {
@@ -463,41 +403,29 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim().toLowerCase().replace(/\s+/g, '');
     const cleanPhone = phone ? sanitizePhone(phone) : '';
 
-    // Verify contact (Firebase Phone Auth or OTP Token)
-    let isContactVerified = Boolean(phoneVerified || firebaseToken);
+    // Check for existing user with same email or username
+    let existing = null;
+    if (isDbConnected()) {
+      existing = await User.findOne({
+        $or: [
+          { email: cleanEmail },
+          { username: cleanUsername }
+        ]
+      }).lean();
+    } else {
+      existing = data.accounts.find(
+        (a) => a.email?.toLowerCase() === cleanEmail || a.username?.toLowerCase() === cleanUsername
+      );
+    }
 
-    if (verificationToken) {
-      try {
-        const decoded = jwt.verify(verificationToken, JWT_SECRET);
-        if (
-          decoded.verified && 
-          (decoded.email === cleanEmail || decoded.identity === cleanEmail || decoded.identity === cleanPhone)
-        ) {
-          isContactVerified = true;
-        }
-      } catch (err) {
-        console.warn('Invalid verification token passed:', err.message);
+    if (existing) {
+      if (existing.email?.toLowerCase() === cleanEmail) {
+        return res.status(400).json({ error: 'An account with this email address already exists. Please sign in.' });
       }
-    }
-
-    if (cleanPhone) {
-      const phoneRecord = otpStore.get(cleanPhone);
-      if (phoneRecord && phoneRecord.verified) {
-        isContactVerified = true;
-      }
-    }
-
-    const emailRecord = otpStore.get(cleanEmail);
-    if (emailRecord && emailRecord.verified) {
-      isContactVerified = true;
-    }
-
-    if (!isContactVerified) {
-      return res.status(400).json({ 
-        error: 'Phone number or email has not been verified yet. Please complete OTP verification.' 
-      });
+      return res.status(400).json({ error: 'This username is already taken. Please choose another.' });
     }
 
     const id = `user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
