@@ -4,81 +4,28 @@ import { Avatar } from './Avatar';
 
 const MOCK_NOTIFICATIONS = [
   {
-    id: 'notif_1',
+    id: 'notif_welcome',
     user: {
-      name: 'Abhinesh Polnati',
-      username: 'abhinesh_polnati',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
-    },
-    type: 'follow',
-    text: 'started following you.',
-    time: '2h',
-    isFollowing: false,
-    section: 'today'
-  },
-  {
-    id: 'notif_2',
-    user: {
-      name: 'Vikas Shirishala',
-      username: '_vikas_.shirishala_',
-      avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120&auto=format&fit=crop&q=80',
-    },
-    type: 'like',
-    text: 'and 12 others liked your reel.',
-    time: '4h',
-    thumbnail: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=120&auto=format&fit=crop&q=80',
-    section: 'today'
-  },
-  {
-    id: 'notif_3',
-    user: {
-      name: 'Folk Vadodara',
-      username: 'folk.vadodara',
-      avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120&auto=format&fit=crop&q=80',
-    },
-    type: 'follow',
-    text: 'started following you.',
-    time: '10 Aug',
-    isFollowing: true,
-    section: 'earlier'
-  },
-  {
-    id: 'notif_4',
-    user: {
-      name: 'Abhinesh Polnati',
-      username: 'abhinesh_polnati',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
-    },
-    type: 'comment',
-    text: 'commented: Verified deal! Ordered on Amazon ❤️',
-    time: '07 Aug',
-    thumbnail: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=120&auto=format&fit=crop&q=80',
-    section: 'earlier'
-  },
-  {
-    id: 'notif_5',
-    user: {
-      name: 'Vedant Trivedi',
-      username: 'vedanttrivedi.0',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
-    },
-    type: 'comment',
-    text: 'commented: Does the HDFC discount work on Croma? Yes!',
-    time: '04 Aug',
-    thumbnail: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=120&auto=format&fit=crop&q=80',
-    section: 'earlier'
-  },
-  {
-    id: 'notif_6',
-    user: {
-      name: 'Security Alert',
-      username: 'system',
-      avatar: null,
+      name: 'PingX System',
+      username: 'pingx.security',
+      avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=pingx_system',
     },
     type: 'security',
-    text: "Someone's trying to log into PingX. Let us know if it's you.",
-    time: '04 Aug',
-    section: 'earlier'
+    text: 'Welcome to PingX! Your secure communications and commerce space is ready.',
+    time: 'Just now',
+    section: 'today'
+  },
+  {
+    id: 'notif_encryption',
+    user: {
+      name: 'Realtime Guard',
+      username: 'pingx.guard',
+      avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=pingx_guard',
+    },
+    type: 'security',
+    text: 'Your connection has been verified with WebSocket realtime telemetry.',
+    time: '1h',
+    section: 'today'
   }
 ];
 

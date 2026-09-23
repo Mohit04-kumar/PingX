@@ -55,6 +55,8 @@ export function ChatProvider({ children, onAddPing }) {
     return null;
   });
   const [isTyping, setIsTyping] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [typingUsers, setTypingUsers] = useState({});
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [activeSummary, setActiveSummary] = useState(null);
 
@@ -73,7 +75,6 @@ export function ChatProvider({ children, onAddPing }) {
       .then((remoteChats) => {
         if (Array.isArray(remoteChats) && remoteChats.length > 0) {
           setChats((prev) => {
-            // merge remote chats into local store, prefer remote
             const map = new Map(prev.map((c) => [c.id, c]));
             remoteChats.forEach((rc) => map.set(rc.id, { ...map.get(rc.id), ...rc }));
             return Array.from(map.values());
@@ -108,11 +109,25 @@ export function ChatProvider({ children, onAddPing }) {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      // console.log('socket connected', socket.id);
+      if (user?.id) {
+        socket.emit('register_user', user.id);
+      }
+    });
+
+    socket.on('online_users', (usersList) => {
+      if (Array.isArray(usersList)) {
+        setOnlineUsers(usersList);
+      }
+    });
+
+    socket.on('user_typing', ({ userId, username, isTyping: typingState }) => {
+      setTypingUsers((prev) => ({
+        ...prev,
+        [userId]: typingState ? (username || 'Someone') : null
+      }));
     });
 
     socket.on('message', (message) => {
-      // append incoming message into corresponding chat room
       if (!message || !message.roomId) return;
       setChats((prev) =>
         prev.map((chat) => {
@@ -127,12 +142,59 @@ export function ChatProvider({ children, onAddPing }) {
       );
     });
 
+    socket.on('message_read', ({ messageId }) => {
+      setChats((prev) =>
+        prev.map((c) => ({
+          ...c,
+          messages: (c.messages || []).map((m) =>
+            m.id === messageId ? { ...m, status: 'read' } : m
+          )
+        }))
+      );
+    });
+
+    socket.on('reaction_updated', ({ messageId, emoji }) => {
+      setChats((prev) =>
+        prev.map((c) => ({
+          ...c,
+          messages: (c.messages || []).map((m) => {
+            if (m.id !== messageId) return m;
+            const reactions = { ...(m.reactions || {}) };
+            reactions[emoji] = (reactions[emoji] || 0) + 1;
+            return { ...m, reactions };
+          })
+        }))
+      );
+    });
+
+    socket.on('message_deleted', ({ messageId }) => {
+      setChats((prev) =>
+        prev.map((c) => ({
+          ...c,
+          messages: (c.messages || []).filter((m) => m.id !== messageId)
+        }))
+      );
+    });
+
     return () => {
       try {
         socket.disconnect();
       } catch {}
     };
-  }, []);
+  }, [user]);
+
+  const sendTyping = (typingState) => {
+    try {
+      const socket = socketRef.current;
+      if (socket && activeChatId) {
+        socket.emit(typingState ? 'typing' : 'stop_typing', {
+          room: activeChatId,
+          userId: user?.id,
+          username: user?.name || user?.username
+        });
+      }
+    } catch {}
+  };
 
   // Listen for external requests to open a server-created chat
   useEffect(() => {
@@ -436,6 +498,9 @@ export function ChatProvider({ children, onAddPing }) {
       addContact,
       sendMessage,
       isTyping,
+      onlineUsers,
+      typingUsers,
+      sendTyping,
       addReaction,
       deleteMessage,
       editMessage,

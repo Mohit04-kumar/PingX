@@ -45,6 +45,9 @@ export function ChatView() {
     addContact, 
     sendMessage, 
     isTyping, 
+    onlineUsers = [],
+    typingUsers = {},
+    sendTyping,
     addReaction, 
     deleteMessage,
     triggerGroupSummary,
@@ -62,6 +65,20 @@ export function ChatView() {
   const [activeTab, setActiveTab] = useState('all');
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [callNotice, setCallNotice] = useState(null);
+
+  // Typing debounce timer
+  const typingTimerRef = useRef(null);
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setInputContent(val);
+    if (sendTyping) {
+      sendTyping(true);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        sendTyping(false);
+      }, 1500);
+    }
+  };
 
   // Emoji Picker & Lightbox states
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -447,9 +464,21 @@ export function ChatView() {
                       </span>
                     )}
                   </h4>
-                  <span className="text-[11px] text-emerald-600 font-semibold">
-                    {isTyping ? 'Typing response...' : activeChat?.user?.status || 'Active now'}
-                  </span>
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    {typingUsers[activeChat?.user?.id] ? (
+                      <span className="text-[#7256c3] font-bold animate-pulse flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#7256c3] animate-ping" />
+                        typing...
+                      </span>
+                    ) : onlineUsers.includes(activeChat?.user?.id) ? (
+                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Online
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">Active on PingX</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -515,7 +544,7 @@ export function ChatView() {
               </div>
             </div>
 
-            {/* Simulated WhatsApp / Instagram Call Notification Banner */}
+            {/* PingX Real-Time HD Calling Banner */}
             {callNotice && (
               <div className="p-3 bg-[#7256c3] text-white text-xs font-bold flex items-center justify-between animate-fadeIn shadow-md">
                 <div className="flex items-center gap-2">
@@ -749,7 +778,7 @@ export function ChatView() {
             <input
               type="text"
               value={inputContent}
-              onChange={(e) => setInputContent(e.target.value)}
+              onChange={handleInputChange}
               placeholder={`Message ${activeChat?.user?.name || activeChat?.group?.name || 'member'}...`}
               className="w-full bg-transparent text-xs outline-none"
               style={{ color: 'var(--text-primary)' }}

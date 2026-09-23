@@ -1,0 +1,365 @@
+// PingX Production Database Schema
+// Database Engine: PostgreSQL
+// ORM: Prisma Client
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// 1. Identity, Users & Profiles
+// ---------------------------------------------------------------------------
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum Role {
+  USER
+  CREATOR
+  MERCHANT
+  ADMIN
+}
+
+model User {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  username        String           @unique
+  passwordHash    String?          // Nullable for OAuth-only users
+  phone           String?          @unique
+  phoneVerified   Boolean          @default(false)
+  emailVerified   Boolean          @default(false)
+  gender          Gender           @default(PREFER_NOT_TO_SAY)
+  dob             DateTime?
+  role            Role             @default(USER)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relationships
+  profile         Profile?
+  sessions        Session[]
+  oauthAccounts   OAuthAccount[]
+  
+  // Social Connections
+  sentFriendRequests     Friendship[]     @relation("FriendshipSender")
+  receivedFriendRequests Friendship[]     @relation("FriendshipReceiver")
+
+  // Messaging
+  conversations          ConversationMember[]
+  sentMessages           Message[]        @relation("MessageSender")
+  messageReactions       MessageReaction[]
+
+  // Activity & Commerce
+  notifications          Notification[]
+  priceAlerts            PriceAlert[]
+  savedProducts          SavedProduct[]
+
+  @@index([email])
+  @@index([username])
+  @@index([phone])
+}
+
+model Profile {
+  id              String      @id @default(uuid())
+  userId          String      @unique
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName        String
+  displayName     String?
+  avatar          String?
+  bio             String?     @db.VarChar(500)
+  linkHeading     String?     @db.VarChar(100) // Original PingX custom link heading
+  website         String?     @db.VarChar(300)
+  location        String?
+  customStatus    String?     @db.VarChar(120)
+  isOnline        Boolean     @default(false)
+  lastSeenAt      DateTime    @default(now())
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model Session {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String    @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model OAuthAccount {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String    // e.g. "google" | "apple"
+  providerAccountId String
+  accessToken       String?   @db.Text
+  refreshToken      String?   @db.Text
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// 2. Authentication & OTP Verification
+// ---------------------------------------------------------------------------
+
+enum OtpChannel {
+  PHONE
+  EMAIL
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  LOGIN
+  PASSWORD_RESET
+  PHONE_CHANGE
+}
+
+model OtpVerification {
+  id            String      @id @default(uuid())
+  identifier    String      // Clean phone number or email
+  channel       OtpChannel
+  purpose       OtpPurpose  @default(REGISTRATION)
+  codeHash      String
+  token         String?     @unique // Ephemeral verification JWT or cryptographic token
+  verified      Boolean     @default(false)
+  attempts      Int         @default(0)
+  maxAttempts   Int         @default(5)
+  expiresAt     DateTime
+  lastSentAt    DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+
+  @@index([identifier, channel, purpose])
+  @@index([token])
+}
+
+// ---------------------------------------------------------------------------
+// 3. Social Graph & Connections
+// ---------------------------------------------------------------------------
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
+
+model Friendship {
+  id            String           @id @default(uuid())
+  senderId      String
+  sender        User             @relation("FriendshipSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId    String
+  receiver      User             @relation("FriendshipReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  status        FriendshipStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+}
+
+// ---------------------------------------------------------------------------
+// 4. Real-Time Messaging & PingX Channels
+// ---------------------------------------------------------------------------
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+model Conversation {
+  id            String               @id @default(uuid())
+  type          ConversationType     @default(DIRECT)
+  name          String?              // Null for 1-on-1 direct chats
+  avatar        String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  members       ConversationMember[]
+  messages      Message[]
+}
+
+model ConversationMember {
+  id              String        @id @default(uuid())
+  conversationId  String
+  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt        DateTime      @default(now())
+  lastReadAt      DateTime      @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO_NOTE
+  PRODUCT_CARD
+  AI_SUMMARY
+  FILE
+}
+
+model Message {
+  id              String              @id @default(uuid())
+  conversationId  String
+  conversation    Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User                @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  type            MessageType         @default(TEXT)
+  content         String              @db.Text
+  isEdited        Boolean             @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  attachments     MessageAttachment[]
+  reactions       MessageReaction[]
+
+  @@index([conversationId, createdAt])
+}
+
+model MessageAttachment {
+  id          String   @id @default(uuid())
+  messageId   String
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  url         String
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
+  createdAt   DateTime @default(now())
+
+  @@index([messageId])
+}
+
+model MessageReaction {
+  id          String   @id @default(uuid())
+  messageId   String
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji       String   @db.VarChar(16)
+  createdAt   DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
+// ---------------------------------------------------------------------------
+// 5. Smart Shop, Products & Real Price Comparison
+// ---------------------------------------------------------------------------
+
+model Product {
+  id            String         @id @default(uuid())
+  title         String
+  description   String?        @db.Text
+  category      String
+  brand         String?
+  imageUrl      String
+  rating        Float          @default(0)
+  reviewCount   Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  prices        ProductPrice[]
+  priceAlerts   PriceAlert[]
+  savedBy       SavedProduct[]
+
+  @@index([title])
+  @@index([category])
+}
+
+model Retailer {
+  id            String         @id @default(uuid())
+  name          String         @unique // e.g. "Amazon.in", "Flipkart", "Croma", "Reliance Digital"
+  logoUrl       String?
+  baseUrl       String
+  isVerified    Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+
+  productPrices ProductPrice[]
+}
+
+model ProductPrice {
+  id          String    @id @default(uuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  retailerId  String
+  retailer    Retailer  @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  price       Float
+  mrp         Float?
+  productUrl  String    @db.Text
+  inStock     Boolean   @default(true)
+  lastChecked DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  @@unique([productId, retailerId])
+  @@index([productId, price])
+}
+
+model PriceAlert {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  targetPrice   Float
+  triggered     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([userId, productId])
+}
+
+model SavedProduct {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+// ---------------------------------------------------------------------------
+// 6. Real Notifications System
+// ---------------------------------------------------------------------------
+
+enum NotificationType {
+  MESSAGE
+  FRIEND_REQUEST
+  FRIEND_ACCEPT
+  PRICE_DROP
+  SYSTEM
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  title       String
+  body        String           @db.VarChar(500)
+  actionUrl   String?
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}

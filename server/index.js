@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -14,8 +16,10 @@ const User = require('./models/User');
 const Chat = require('./models/Chat');
 const FriendRequest = require('./models/FriendRequest');
 const Product = require('./models/Product');
-const Ping = require('./models/Ping');
 const data = require('./data'); // In-memory fallback if DB is disconnected
+const smsService = require('./services/smsService');
+const aiService = require('./services/aiService');
+const emailService = require('./services/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_pingx_secret';
 const PORT = process.env.PORT || 4001;
@@ -97,23 +101,42 @@ const sanitizePhone = (rawPhone) => {
 // Secure Phone OTP Endpoints (Backend Generation & Cryptographic Verification)
 // ---------------------------------------------------------------------------
 
-// 1. Send OTP to Phone Number
+// ---------------------------------------------------------------------------
+// Secure Email & Identity OTP Endpoints (Gmail SMTP / Nodemailer)
+// ---------------------------------------------------------------------------
+
+// Helper to extract clean email or phone identity
+const extractIdentity = (body = {}) => {
+  const raw = String(body.email || body.identity || body.phone || '').trim();
+  if (raw.includes('@')) {
+    return { type: 'email', key: raw.toLowerCase() };
+  }
+  const cleanPhone = sanitizePhone(raw);
+  return { type: 'phone', key: cleanPhone };
+};
+
+// 1. Send 6-Digit OTP to Email (or Phone)
 app.post('/api/auth/otp/send', async (req, res) => {
   try {
-    const { phone, purpose = 'registration' } = req.body || {};
-    if (!phone) {
-      return res.status(400).json({ error: 'Phone number is required.' });
+    const { email, phone, identity, purpose = 'registration' } = req.body || {};
+    const idObj = extractIdentity({ email, phone, identity });
+
+    if (!idObj.key) {
+      return res.status(400).json({ error: 'Email address is required to receive verification code.' });
     }
 
-    const cleanPhone = sanitizePhone(phone);
-    if (cleanPhone.length < 10) {
-      return res.status(400).json({ error: 'Please enter a valid phone number (at least 10 digits).' });
+    if (idObj.type === 'email') {
+      if (!idObj.key.includes('@') || !idObj.key.includes('.')) {
+        return res.status(400).json({ error: 'Please enter a valid email address (e.g. name@gmail.com).' });
+      }
+    } else if (idObj.key.length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number or email.' });
     }
 
-    // Rate limiting: 25 seconds cooldown between sends to prevent SMS spamming
-    const existing = otpStore.get(cleanPhone);
-    if (existing && Date.now() - existing.lastSentAt < 25000) {
-      const waitSec = Math.ceil((25000 - (Date.now() - existing.lastSentAt)) / 1000);
+    // Rate limiting: 10 seconds cooldown between requests
+    const existing = otpStore.get(idObj.key);
+    if (existing && Date.now() - existing.lastSentAt < 10000) {
+      const waitSec = Math.ceil((10000 - (Date.now() - existing.lastSentAt)) / 1000);
       return res.status(429).json({ 
         error: `Please wait ${waitSec} seconds before requesting a new verification code.` 
       });
@@ -124,7 +147,7 @@ app.post('/api/auth/otp/send', async (req, res) => {
     const codeHash = crypto.createHmac('sha256', JWT_SECRET).update(code).digest('hex');
 
     // Store in backend cache with 5-minute expiry & max 3 attempt tracker
-    otpStore.set(cleanPhone, {
+    otpStore.set(idObj.key, {
       codeHash,
       expiresAt: Date.now() + 5 * 60 * 1000,
       attempts: 0,
@@ -133,51 +156,63 @@ app.post('/api/auth/otp/send', async (req, res) => {
       verified: false
     });
 
-    // Simulated SMS Gateway Dispatch Log
-    console.log(`\n======================================================`);
-    console.log(`📱 [SECURE BACKEND SMS GATEWAY]`);
-    console.log(`Target: ${cleanPhone}`);
-    console.log(`Purpose: ${purpose}`);
-    console.log(`Message: Your PingX verification code is: ${code} (Valid for 5 mins)`);
-    console.log(`======================================================\n`);
-
-    return res.json({
-      success: true,
-      message: `Verification code sent to ${cleanPhone}.`,
-      expiresIn: 300,
-      previewCode: code // Accessible in development environment for streamlined testing
-    });
+    if (idObj.type === 'email') {
+      // Dispatch OTP via free Gmail SMTP or terminal audit
+      const emailRes = await emailService.sendOtpEmail(idObj.key, code, purpose);
+      return res.json({
+        success: true,
+        message: emailRes.provider === 'gmail'
+          ? `Verification code dispatched to ${idObj.key} via Gmail SMTP. Please check your inbox!`
+          : `Verification code generated for ${idObj.key}. Check server terminal or dev code.`,
+        target: idObj.key,
+        type: 'email',
+        expiresIn: 300,
+        provider: emailRes.provider,
+        devOtp: code
+      });
+    } else {
+      // Fallback SMS dispatch
+      await smsService.sendOtp(idObj.key, code, purpose);
+      return res.json({
+        success: true,
+        message: `Verification code dispatched to ${idObj.key}.`,
+        target: idObj.key,
+        type: 'phone',
+        expiresIn: 300
+      });
+    }
   } catch (err) {
     console.error('Error sending OTP:', err);
-    res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
+    res.status(500).json({ error: 'Failed to send OTP code. Please try again.' });
   }
 });
 
-// 2. Verify Phone OTP
+// 2. Verify Email (or Phone) OTP
 app.post('/api/auth/otp/verify', async (req, res) => {
   try {
-    const { phone, code } = req.body || {};
-    if (!phone || !code) {
-      return res.status(400).json({ error: 'Phone number and verification code are required.' });
+    const { email, phone, identity, code } = req.body || {};
+    const idObj = extractIdentity({ email, phone, identity });
+    const trimmedCode = String(code || '').trim();
+
+    if (!idObj.key || !trimmedCode) {
+      return res.status(400).json({ error: 'Email and 6-digit verification code are required.' });
     }
 
-    const cleanPhone = sanitizePhone(phone);
-    const trimmedCode = String(code).trim();
-    const record = otpStore.get(cleanPhone);
+    const record = otpStore.get(idObj.key);
 
     if (!record) {
       return res.status(400).json({ 
-        error: 'No active OTP request found for this phone number. Please request a new code.' 
+        error: `No active verification request found for ${idObj.key}. Please click "Send Code" first.` 
       });
     }
 
     if (Date.now() > record.expiresAt) {
-      otpStore.delete(cleanPhone);
-      return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
+      otpStore.delete(idObj.key);
+      return res.status(400).json({ error: 'Verification code has expired (valid 5 mins). Please request a new one.' });
     }
 
     if (record.attempts >= 3) {
-      otpStore.delete(cleanPhone);
+      otpStore.delete(idObj.key);
       return res.status(429).json({ 
         error: 'Too many incorrect attempts. Code invalidated for security. Please request a new code.' 
       });
@@ -194,7 +229,7 @@ app.post('/api/auth/otp/verify', async (req, res) => {
 
     // Mark as verified and issue a cryptographically signed verification token (valid 15m)
     const verificationToken = jwt.sign(
-      { phone: cleanPhone, verified: true, type: 'phone_verification' },
+      { identity: idObj.key, email: idObj.type === 'email' ? idObj.key : undefined, verified: true, type: 'email_verification' },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
@@ -205,7 +240,7 @@ app.post('/api/auth/otp/verify', async (req, res) => {
     return res.json({
       success: true,
       verified: true,
-      message: 'Phone number successfully verified by backend service.',
+      message: `${idObj.type === 'email' ? 'Email' : 'Phone'} successfully verified!`,
       verificationToken
     });
   } catch (err) {
@@ -214,17 +249,18 @@ app.post('/api/auth/otp/verify', async (req, res) => {
   }
 });
 
-// 3. Direct Phone OTP Sign-in
+// 3. Direct Email (or Phone) OTP Sign-In
 app.post('/api/auth/otp/login', async (req, res) => {
   try {
-    const { phone, code } = req.body || {};
-    if (!phone || !code) {
-      return res.status(400).json({ error: 'Phone number and OTP code are required.' });
+    const { email, phone, identity, code } = req.body || {};
+    const idObj = extractIdentity({ email, phone, identity });
+    const trimmedCode = String(code || '').trim();
+
+    if (!idObj.key || !trimmedCode) {
+      return res.status(400).json({ error: 'Email and 6-digit verification code are required.' });
     }
 
-    const cleanPhone = sanitizePhone(phone);
-    const trimmedCode = String(code).trim();
-    const record = otpStore.get(cleanPhone);
+    const record = otpStore.get(idObj.key);
 
     if (!record || Date.now() > record.expiresAt) {
       return res.status(400).json({ error: 'OTP expired or not requested. Please request a new code.' });
@@ -235,23 +271,33 @@ app.post('/api/auth/otp/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid verification code.' });
     }
 
-    // Look up user by phone number
+    // Look up user by email or phone
     let found = null;
     if (isDbConnected()) {
-      found = await User.findOne({ phone: cleanPhone }).lean();
+      found = await User.findOne(
+        idObj.type === 'email' 
+          ? { email: idObj.key } 
+          : { phone: idObj.key }
+      ).lean();
     } else {
-      found = data.accounts.find((a) => sanitizePhone(a.phone) === cleanPhone);
+      found = data.accounts.find((a) => 
+        idObj.type === 'email' 
+          ? (a.email || '').toLowerCase() === idObj.key.toLowerCase()
+          : sanitizePhone(a.phone) === idObj.key
+      );
     }
 
     if (!found) {
       const id = `user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const cleanName = idObj.type === 'email' ? idObj.key.split('@')[0] : `User ${idObj.key.slice(-4)}`;
       found = {
         id,
-        name: `User ${cleanPhone.slice(-4)}`,
-        username: `user_${cleanPhone.slice(-4)}`,
-        email: `${cleanPhone.replace(/\D/g, '')}@pingx.sms`,
-        phone: cleanPhone,
-        phoneVerified: true,
+        name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+        username: cleanName.toLowerCase().replace(/[^a-z0-9_]/g, ''),
+        email: idObj.type === 'email' ? idObj.key : `${idObj.key.replace(/\D/g, '')}@pingx.sms`,
+        phone: idObj.type === 'phone' ? idObj.key : '',
+        phoneVerified: idObj.type === 'phone',
+        emailVerified: true,
         gender: '',
         dob: '',
         role: 'Member',
@@ -266,12 +312,73 @@ app.post('/api/auth/otp/login', async (req, res) => {
       }
     }
 
-    otpStore.delete(cleanPhone);
+    otpStore.delete(idObj.key);
     const token = jwt.sign({ sub: found.id }, JWT_SECRET, { expiresIn: '30d' });
-    return res.json({ token, user: found, message: 'Signed in successfully via Phone OTP.' });
+    return res.json({ token, user: found, message: 'Signed in successfully via Email OTP.' });
   } catch (err) {
     console.error('Error logging in with OTP:', err);
-    res.status(500).json({ error: 'Phone OTP login failed.' });
+    res.status(500).json({ error: 'OTP login failed.' });
+  }
+});
+
+// 4. Firebase Phone Authentication Sign-In / User Provisioning
+app.post('/api/auth/firebase/login', async (req, res) => {
+  try {
+    const { phoneNumber, idToken, uid, name, email } = req.body || {};
+    if (!phoneNumber) {
+      return res.status(400).json({ error: 'Verified phone number is required.' });
+    }
+
+    const cleanPh = sanitizePhone(phoneNumber);
+    let found = null;
+
+    if (isDbConnected()) {
+      found = await User.findOne({
+        $or: [
+          { phone: cleanPh },
+          { phone: phoneNumber }
+        ]
+      }).lean();
+    } else {
+      found = data.accounts.find(
+        (a) => a.phone && (sanitizePhone(a.phone) === cleanPh || a.phone === phoneNumber)
+      );
+    }
+
+    if (!found) {
+      // Auto-provision user account for first-time phone sign in
+      const id = `user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const cleanDigits = cleanPh.replace(/\D/g, '');
+      const fallbackName = name || `User ${cleanDigits.slice(-4) || 'PingX'}`;
+      const fallbackUsername = `user_${cleanDigits.slice(-6) || Math.random().toString(36).substring(2, 7)}`;
+      const fallbackEmail = email || `${cleanDigits || id}@pingx.internal`;
+
+      found = {
+        id,
+        name: fallbackName,
+        username: fallbackUsername,
+        email: fallbackEmail,
+        phone: cleanPh || phoneNumber,
+        phoneVerified: true,
+        firebaseUid: uid || '',
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanPh || id}`,
+        bio: 'PingX Member',
+        status: 'online',
+        joinedDate: new Date().getFullYear().toString()
+      };
+
+      if (isDbConnected()) {
+        await User.create(found);
+      } else {
+        data.accounts.unshift(found);
+      }
+    }
+
+    const token = jwt.sign({ sub: found.id }, JWT_SECRET, { expiresIn: '30d' });
+    return res.json({ token, user: found, message: 'Signed in successfully via Firebase Phone Auth.' });
+  } catch (err) {
+    console.error('Firebase phone login error:', err);
+    res.status(500).json({ error: 'Firebase authentication failed.' });
   }
 });
 
@@ -331,10 +438,13 @@ app.post('/api/auth/register', async (req, res) => {
       username, 
       email, 
       password, 
-      phone, 
+      phone = '', 
+      phoneVerified = false,
       gender, 
       dob, 
       verificationToken,
+      firebaseToken,
+      firebaseUid,
       avatar, 
       bio, 
       location 
@@ -352,33 +462,41 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Please provide your date of birth.' });
     }
 
-    if (!phone) {
-      return res.status(400).json({ error: 'Phone number is required.' });
-    }
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone ? sanitizePhone(phone) : '';
 
-    const cleanPhone = sanitizePhone(phone);
+    // Verify contact (Firebase Phone Auth or OTP Token)
+    let isContactVerified = Boolean(phoneVerified || firebaseToken);
 
-    // Verify phone OTP token
-    let isPhoneVerified = false;
     if (verificationToken) {
       try {
         const decoded = jwt.verify(verificationToken, JWT_SECRET);
-        if (decoded.type === 'phone_verification' && decoded.phone === cleanPhone) {
-          isPhoneVerified = true;
+        if (
+          decoded.verified && 
+          (decoded.email === cleanEmail || decoded.identity === cleanEmail || decoded.identity === cleanPhone)
+        ) {
+          isContactVerified = true;
         }
       } catch (err) {
         console.warn('Invalid verification token passed:', err.message);
       }
     }
 
-    const otpRecord = otpStore.get(cleanPhone);
-    if (otpRecord && otpRecord.verified) {
-      isPhoneVerified = true;
+    if (cleanPhone) {
+      const phoneRecord = otpStore.get(cleanPhone);
+      if (phoneRecord && phoneRecord.verified) {
+        isContactVerified = true;
+      }
     }
 
-    if (!isPhoneVerified) {
+    const emailRecord = otpStore.get(cleanEmail);
+    if (emailRecord && emailRecord.verified) {
+      isContactVerified = true;
+    }
+
+    if (!isContactVerified) {
       return res.status(400).json({ 
-        error: 'Phone number has not been verified. Please verify with OTP before registering.' 
+        error: 'Phone number or email has not been verified yet. Please complete OTP verification.' 
       });
     }
 
@@ -726,50 +844,89 @@ app.post('/api/compare', async (req, res) => {
   }
 });
 
-// AI endpoints
-app.post('/api/ai', async (req, res) => {
-  const key = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-  const { prompt } = req.body || {};
-  if (!key) return res.status(501).json({ error: 'AI provider not configured on server' });
+// ---------------------------------------------------------------------------
+// AI Assistant Backend Proxy & Tool-Grounding Endpoints
+// ---------------------------------------------------------------------------
 
+// 1. Primary AI Chat Proxy with Tool-Grounding & Image Multimodal Support
+app.post('/api/ai/chat', async (req, res) => {
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt || '' }] }] })
+    const { 
+      prompt = '', 
+      imageBase64 = null, 
+      mode = 'chatgpt', 
+      contextType = 'general', 
+      contextItem = null,
+      history = []
+    } = req.body || {};
+
+    if (!prompt && !imageBase64) {
+      return res.status(400).json({ error: 'Prompt or image is required.' });
+    }
+
+    const result = await aiService.generateChatResponse({
+      prompt,
+      imageBase64,
+      mode,
+      contextType,
+      contextItem,
+      history
     });
-    const json = await response.json();
-    return res.json(json);
-  } catch (e) {
-    console.warn('AI proxy error', e);
-    return res.status(500).json({ error: 'AI proxy failed' });
+
+    return res.json({
+      success: true,
+      reply: result.reply,
+      model: result.model,
+      products: result.products || [],
+      suggestions: result.suggestions || []
+    });
+  } catch (err) {
+    console.error('Error in /api/ai/chat:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'AI assistant service encountered an error.',
+      reply: 'PingX AI is temporarily unavailable. Please try your query again.',
+      model: 'fallback'
+    });
   }
 });
 
-app.post('/api/ai/stream', (req, res) => {
-  const { prompt } = req.body || {};
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('X-Accel-Buffering', 'no');
+// 2. Chat Summarizer & Action Item Extraction Tool
+app.post('/api/ai/summarize', async (req, res) => {
+  try {
+    const { messages = [], conversationTitle = 'Chat' } = req.body || {};
+    const result = await aiService.summarizeConversation({ messages, conversationTitle });
+    return res.json({
+      success: true,
+      summary: result.summary,
+      keyDecisions: result.keyDecisions || [],
+      actionItems: result.actionItems || []
+    });
+  } catch (err) {
+    console.error('Error in /api/ai/summarize:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to summarize conversation'
+    });
+  }
+});
 
-  const full = prompt && prompt.length > 0 ? `PingX streaming response for: ${prompt}` : 'PingX streaming response.';
-  const words = full.split(' ');
+// 3. Smart Shop Products Query for AI Assistant Tool Grounding
+app.post('/api/ai/products', (req, res) => {
+  const { query = '' } = req.body || {};
+  const results = aiService.searchProductsTool(query);
+  return res.json({ success: true, products: results });
+});
 
-  let i = 0;
-  const iv = setInterval(() => {
-    if (i >= words.length) {
-      try {
-        res.write('\n');
-        res.end();
-      } catch {}
-      clearInterval(iv);
-      return;
-    }
-    try {
-      res.write((i === 0 ? '' : ' ') + words[i]);
-    } catch {}
-    i += 1;
-  }, 35);
+// 4. Backward Compatibility Proxy
+app.post('/api/ai', async (req, res) => {
+  try {
+    const { prompt = '' } = req.body || {};
+    const result = await aiService.generateChatResponse({ prompt });
+    return res.json({ candidates: [{ content: { parts: [{ text: result.reply }] } }] });
+  } catch (e) {
+    return res.status(500).json({ error: 'AI proxy failed' });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -779,17 +936,31 @@ app.post('/api/ai/stream', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+const activeUsers = new Map();
+
 io.on('connection', (socket) => {
-  // Optional token authentication on handshake
+  let currentUserId = null;
+
   try {
     const token = socket.handshake.auth?.token;
     if (token) {
       const decoded = jwt.verify(token, JWT_SECRET);
-      socket.userId = decoded.sub;
+      currentUserId = decoded.sub || decoded.id;
+      if (currentUserId) {
+        socket.userId = currentUserId;
+        activeUsers.set(currentUserId, socket.id);
+        io.emit('online_users', Array.from(activeUsers.keys()));
+      }
     }
-  } catch (e) {
-    // Non-fatal for public sockets
-  }
+  } catch (e) {}
+
+  socket.on('register_user', (userId) => {
+    if (userId) {
+      currentUserId = userId;
+      activeUsers.set(userId, socket.id);
+      io.emit('online_users', Array.from(activeUsers.keys()));
+    }
+  });
 
   socket.on('join', (room) => {
     socket.join(room);
@@ -823,7 +994,50 @@ io.on('connection', (socket) => {
     io.to(room).emit('message', message);
   });
 
-  socket.on('disconnect', () => {});
+  socket.on('typing', ({ room, userId, username }) => {
+    if (room) {
+      socket.to(room).emit('user_typing', { userId, username, isTyping: true });
+    }
+  });
+
+  socket.on('stop_typing', ({ room, userId, username }) => {
+    if (room) {
+      socket.to(room).emit('user_typing', { userId, username, isTyping: false });
+    }
+  });
+
+  socket.on('read_receipt', async ({ room, messageId, userId }) => {
+    if (room && messageId) {
+      if (isDbConnected()) {
+        try {
+          await Chat.updateOne(
+            { id: room, 'messages.id': messageId },
+            { $set: { 'messages.$.status': 'read' } }
+          );
+        } catch (e) {}
+      }
+      io.to(room).emit('message_read', { messageId, userId, readAt: new Date().toISOString() });
+    }
+  });
+
+  socket.on('react_message', ({ room, messageId, emoji, userId }) => {
+    if (room && messageId && emoji) {
+      io.to(room).emit('reaction_updated', { messageId, emoji, userId });
+    }
+  });
+
+  socket.on('delete_message', ({ room, messageId }) => {
+    if (room && messageId) {
+      io.to(room).emit('message_deleted', { messageId });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    if (currentUserId && activeUsers.get(currentUserId) === socket.id) {
+      activeUsers.delete(currentUserId);
+      io.emit('online_users', Array.from(activeUsers.keys()));
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

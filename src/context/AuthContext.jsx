@@ -34,16 +34,23 @@ const safeStorage = {
   }
 };
 
+const isDemoOrDummy = (acc) => {
+  if (!acc) return true;
+  const id = String(acc.id || '');
+  const email = String(acc.email || '').toLowerCase();
+  const username = String(acc.username || '').toLowerCase();
+  if (id.startsWith('guest_') || id.startsWith('demo_')) return true;
+  if (email.includes('demo') || username.includes('demo')) return true;
+  if (email === 'rahul@example.com') return true;
+  const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
+  if (DUMMY_IDS.includes(id)) return true;
+  return false;
+};
+
 export function AuthProvider({ children }) {
   const [accounts, setAccounts] = useState(() => {
     const saved = safeStorage.getItem(STORAGE_KEY, []);
-    const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
-    const clean = Array.isArray(saved)
-      ? saved.filter((a) => !DUMMY_IDS.includes(a?.id) && a?.email !== 'rahul@example.com')
-      : [];
-    if (!clean.some((c) => c.id === CURRENT_USER.id || c.email === CURRENT_USER.email)) {
-      clean.unshift(CURRENT_USER);
-    }
+    const clean = Array.isArray(saved) ? saved.filter((a) => !isDemoOrDummy(a)) : [];
     safeStorage.setItem(STORAGE_KEY, clean);
     return clean;
   });
@@ -55,10 +62,9 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => safeStorage.getItem('pingx_token', null));
   const [user, setUser] = useState(() => {
     const saved = safeStorage.getItem('pingx_active_user', null);
-    if (!saved) return null;
-    const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
-    if (DUMMY_IDS.includes(saved.id) || saved.email === 'rahul@example.com') {
+    if (!saved || isDemoOrDummy(saved)) {
       safeStorage.removeItem('pingx_active_user');
+      safeStorage.removeItem('pingx_token');
       return null;
     }
     return saved;
@@ -66,13 +72,22 @@ export function AuthProvider({ children }) {
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const saved = safeStorage.getItem('pingx_active_user', null);
-    if (!saved) return false;
-    const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
-    if (DUMMY_IDS.includes(saved.id) || saved.email === 'rahul@example.com') {
+    if (!saved || isDemoOrDummy(saved)) {
       return false;
     }
     return true;
   });
+
+  // Active purge on mount
+  useEffect(() => {
+    const active = safeStorage.getItem('pingx_active_user', null);
+    if (active && isDemoOrDummy(active)) {
+      safeStorage.removeItem('pingx_active_user');
+      safeStorage.removeItem('pingx_token');
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  }, []);
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login');
@@ -260,17 +275,20 @@ export function AuthProvider({ children }) {
     return { success: true, user: newUser };
   };
 
-  const loginWithPhoneOtp = async (phone, code) => {
-    const cleanPhone = String(phone || '').replace(/[\s()-]/g, '');
+  const loginWithOtp = async (identity, code) => {
+    const clean = String(identity || '').trim();
+    const payload = clean.includes('@')
+      ? { email: clean.toLowerCase(), code }
+      : { phone: clean.replace(/[\s()-]/g, ''), code };
     try {
       const res = await fetch(`${API_BASE}/api/auth/otp/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone, code })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Phone OTP login failed');
+        throw new Error(data.error || 'OTP verification failed');
       }
 
       if (data.token && data.user) {
@@ -284,7 +302,38 @@ export function AuthProvider({ children }) {
       }
       return data;
     } catch (err) {
-      console.error('loginWithPhoneOtp error:', err);
+      console.error('loginWithOtp error:', err);
+      throw err;
+    }
+  };
+
+  const loginWithPhoneOtp = async (identity, code) => {
+    return loginWithOtp(identity, code);
+  };
+
+  const loginWithFirebase = async (firebaseData) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/firebase/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(firebaseData)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Firebase phone authentication failed.');
+      }
+      if (data.token && data.user) {
+        setToken(data.token);
+        setUser(data.user);
+        setIsAuthenticated(true);
+        setIsGuest(false);
+        safeStorage.setItem('pingx_token', data.token);
+        safeStorage.setItem('pingx_active_user', data.user);
+        return { success: true, user: data.user };
+      }
+      return data;
+    } catch (err) {
+      console.error('loginWithFirebase error:', err);
       throw err;
     }
   };
@@ -457,7 +506,9 @@ export function AuthProvider({ children }) {
       setAuthMode,
       openAuthModal,
       login,
+      loginWithOtp,
       loginWithPhoneOtp,
+      loginWithFirebase,
       register,
       logout,
       switchAccount,

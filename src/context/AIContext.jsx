@@ -111,7 +111,7 @@ export function AIContextContainer({ children, activeTab, activeChat, activeProd
     setAiMessages((prev) => [...prev, placeholderMsg]);
 
     try {
-      await generateAIResponse({
+      const aiResult = await generateAIResponse({
         prompt: trimmedPrompt || 'Analyze attached image',
         imageBase64,
         mode: aiMode,
@@ -127,9 +127,18 @@ export function AIContextContainer({ children, activeTab, activeChat, activeProd
           );
         }
       });
+
       setAiMessages((prev) =>
         prev.map((msg) =>
-          msg.id === aiMsgId ? { ...msg, isStreaming: false } : msg
+          msg.id === aiMsgId 
+            ? { 
+                ...msg, 
+                content: aiResult?.text || msg.content,
+                products: aiResult?.products || [],
+                suggestions: aiResult?.suggestions || [],
+                isStreaming: false 
+              } 
+            : msg
         )
       );
     } catch (err) {

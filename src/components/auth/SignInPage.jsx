@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
 import { PingXLogo } from '../common/PingXLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { authApi } from '../../services/authApi';
+import { 
+  isFirebaseConfigured, 
+  sendFirebasePhoneOtp, 
+  verifyFirebasePhoneOtp, 
+  formatE164Phone 
+} from '../../services/firebase';
 
 export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSuccess }) {
-  const { login, loginWithPhoneOtp } = useAuth();
+  const { login, loginWithOtp, loginWithFirebase } = useAuth();
   const { addToast } = useToast();
 
   const [emailOrUser, setEmailOrUser] = useState('');
@@ -20,9 +26,12 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
   // Google & OTP Modal States
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpPhone, setOtpPhone] = useState('+91 98765 43210');
+  const [otpPhoneCountry, setOtpPhoneCountry] = useState('+91');
+  const [otpPhone, setOtpPhone] = useState('7981154788');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [firebaseConfirmation, setFirebaseConfirmation] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -272,7 +281,7 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
                     onClick={() => setShowOtpModal(true)}
                     className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer shadow-2xs hover:border-[#7256c3]"
                   >
-                    <span>📱 OTP Login</span>
+                    <span>📱 Phone SMS OTP</span>
                   </button>
                 </div>
               </div>
@@ -376,7 +385,7 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
         </div>
       )}
 
-      {/* Phone OTP Verification Modal */}
+      {/* Phone SMS OTP Verification Modal (Firebase Phone Auth) */}
       {showOtpModal && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
@@ -387,8 +396,9 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
             className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 space-y-4 animate-scaleUp text-slate-900 text-xs"
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-sm text-slate-900 font-heading">
-                {otpSent ? 'Verify 6-Digit OTP' : 'Sign in with Phone OTP'}
+              <h3 className="font-extrabold text-sm text-slate-900 font-heading flex items-center gap-2">
+                <Phone className="w-4 h-4 text-[#7256c3]" />
+                {otpSent ? 'Verify 6-Digit SMS Code' : 'Sign in with Phone SMS OTP'}
               </h3>
               <button onClick={() => setShowOtpModal(false)} className="p-1 rounded-full text-slate-400 hover:bg-slate-100 cursor-pointer">
                 ✕
@@ -397,82 +407,133 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
 
             {!otpSent ? (
               <div className="space-y-4">
-                <p className="text-slate-600 text-xs">Enter your mobile phone number to receive a secure login OTP code:</p>
+                <p className="text-slate-600 text-xs">
+                  Enter your mobile number to receive a secure SMS OTP code via Google Firebase:
+                </p>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Mobile Number</label>
-                  <input
-                    type="tel"
-                    value={otpPhone}
-                    onChange={(e) => setOtpPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-mono font-bold outline-none focus:border-[#7256c3]"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={otpPhoneCountry}
+                      onChange={(e) => setOtpPhoneCountry(e.target.value)}
+                      className="px-2.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-bold outline-none cursor-pointer shrink-0"
+                    >
+                      <option value="+91">🇮🇳 +91</option>
+                      <option value="+1">🇺🇸 +1</option>
+                      <option value="+44">🇬🇧 +44</option>
+                      <option value="+971">🇦🇪 +971</option>
+                      <option value="+65">🇸🇬 +65</option>
+                    </select>
+                    <input
+                      type="tel"
+                      value={otpPhone}
+                      onChange={(e) => setOtpPhone(e.target.value)}
+                      placeholder="79811 54788"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-mono font-medium outline-none focus:border-[#7256c3] focus:bg-white"
+                    />
+                  </div>
                 </div>
+
+                {/* reCAPTCHA Mount for Login Modal */}
+                <div id="recaptcha-container-login"></div>
+
                 <button
                   type="button"
+                  disabled={otpLoading}
                   onClick={async () => {
-                    if (!otpPhone || otpPhone.replace(/\D/g, '').length < 10) {
-                      addToast('Please enter a valid 10-digit mobile number.', 'error');
+                    const cleanPh = otpPhone.trim().replace(/\D/g, '');
+                    if (!cleanPh || cleanPh.length < 7) {
+                      addToast('Please enter a valid mobile number.', 'error');
                       return;
                     }
+                    const fullNumber = formatE164Phone(otpPhoneCountry, cleanPh);
+                    setOtpLoading(true);
                     try {
-                      const data = await authApi.sendOtp(otpPhone, 'login');
-                      setOtpSent(true);
-                      if (data.previewCode) {
-                        setOtpCode(data.previewCode);
-                        addToast(`OTP Sent to ${otpPhone}! Code: ${data.previewCode}`, 'info', 5000);
+                      if (isFirebaseConfigured()) {
+                        const confirmation = await sendFirebasePhoneOtp(fullNumber, 'recaptcha-container-login');
+                        setFirebaseConfirmation(confirmation);
+                        setOtpSent(true);
+                        setOtpLoading(false);
+                        addToast(`SMS code dispatched to ${fullNumber} via Firebase!`, 'success', 6000);
                       } else {
-                        addToast(`Verification code sent to ${otpPhone}.`, 'success', 3000);
+                        const data = await authApi.sendOtp(fullNumber, 'login');
+                        setOtpSent(true);
+                        setOtpLoading(false);
+                        if (data && data.devOtp) {
+                          setOtpCode(data.devOtp);
+                        }
+                        addToast(data.message || `SMS Code sent to ${fullNumber}.`, 'info', 6000);
                       }
                     } catch (err) {
-                      addToast(err.message || 'Failed to dispatch OTP.', 'error');
+                      setOtpLoading(false);
+                      addToast(err.message || 'Failed to dispatch SMS verification code.', 'error');
                     }
                   }}
-                  className="w-full py-3 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
+                  className="w-full py-3 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs transition-colors flex items-center justify-center gap-2"
                 >
-                  Send 6-Digit OTP
+                  {otpLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Send SMS Code'}
                 </button>
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-slate-600 text-xs">We sent a 6-digit verification code to <span className="font-mono font-bold text-slate-900">{otpPhone}</span>:</p>
+                <p className="text-slate-600 text-xs">
+                  We sent a 6-digit verification code to <span className="font-semibold text-slate-900">{formatE164Phone(otpPhoneCountry, otpPhone)}</span>:
+                </p>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Verification Code</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">6-Digit SMS Code</label>
                   <input
                     type="text"
                     maxLength={6}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="6-Digit OTP"
+                    placeholder="000000"
                     className="w-full text-center tracking-widest text-lg font-mono font-extrabold px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 outline-none focus:border-[#7256c3]"
                   />
                 </div>
                 <button
                   type="button"
+                  disabled={otpLoading}
                   onClick={async () => {
                     if (!otpCode || otpCode.trim().length !== 6) {
-                      addToast('Please enter the 6-digit code received on your phone.', 'error');
+                      addToast('Please enter the 6-digit code received via SMS.', 'error');
                       return;
                     }
+                    const fullNumber = formatE164Phone(otpPhoneCountry, otpPhone);
+                    setOtpLoading(true);
                     try {
-                      await loginWithPhoneOtp(otpPhone, otpCode.trim());
+                      if (firebaseConfirmation) {
+                        const verified = await verifyFirebasePhoneOtp(firebaseConfirmation, otpCode);
+                        await loginWithFirebase({
+                          phoneNumber: verified.phoneNumber || fullNumber,
+                          idToken: verified.idToken,
+                          uid: verified.uid
+                        });
+                      } else {
+                        await loginWithOtp(fullNumber, otpCode.trim());
+                      }
+                      setOtpLoading(false);
                       setShowOtpModal(false);
-                      addToast('Phone number verified! Welcome to PingX.', 'success', 2500);
+                      addToast('Phone verified! Welcome back to PingX.', 'success', 2500);
                       if (onAuthSuccess) onAuthSuccess();
                     } catch (err) {
-                      addToast(err.message || 'Invalid or expired OTP code.', 'error');
+                      setOtpLoading(false);
+                      addToast(err.message || 'Invalid or expired SMS OTP code.', 'error');
                     }
                   }}
-                  className="w-full py-3 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors flex items-center justify-center gap-2"
                 >
-                  Verify & Sign In
+                  {otpLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Verify & Sign In ✓'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setOtpSent(false)}
+                  onClick={() => {
+                    setOtpSent(false);
+                    setOtpCode('');
+                    setFirebaseConfirmation(null);
+                  }}
                   className="w-full text-center text-[11px] font-bold text-[#7256c3] hover:underline cursor-pointer"
                 >
-                  Change phone number
+                  Change mobile number
                 </button>
               </div>
             )}

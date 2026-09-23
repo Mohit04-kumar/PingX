@@ -23,6 +23,12 @@ import { PingXLogo } from '../common/PingXLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { authApi } from '../../services/authApi';
+import { 
+  isFirebaseConfigured, 
+  sendFirebasePhoneOtp, 
+  verifyFirebasePhoneOtp, 
+  formatE164Phone 
+} from '../../services/firebase';
 
 export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuccess }) {
   const { register } = useAuth();
@@ -34,7 +40,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
   const [gender, setGender] = useState('Male'); // 'Male' | 'Female' | 'Other' | 'Prefer not to say'
   const [dob, setDob] = useState('2000-01-15');
   const [phoneCountry, setPhoneCountry] = useState('+91');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('7981154788');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -42,21 +48,20 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Backend OTP Phone Verification States
+  // Backend OTP Email Verification States
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [firebaseConfirmationResult, setFirebaseConfirmationResult] = useState(null);
+  const [firebaseToken, setFirebaseToken] = useState('');
+  const [firebaseUid, setFirebaseUid] = useState('');
   const [verificationToken, setVerificationToken] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
 
   // Quick Social Modals
   const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [quickOtpPhone, setQuickOtpPhone] = useState('+91 98765 43210');
-  const [quickOtpCode, setQuickOtpCode] = useState('');
-  const [quickOtpSent, setQuickOtpSent] = useState(false);
 
   // Password strength calculation
   const getPasswordStrength = () => {
@@ -73,22 +78,41 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
   const strengthLabels = ['Too weak', 'Fair', 'Good', 'Strong', 'Excellent'];
   const strengthColors = ['bg-slate-200', 'bg-red-400', 'bg-amber-400', 'bg-[#818cf8]', 'bg-[#7256c3]'];
 
-  // Send OTP to phone number via Backend Service
-  const handleSendOtp = async () => {
+  // Send SMS OTP via Firebase Phone Auth (with backend gateway fallback)
+  const handleSendPhoneOtp = async () => {
     setOtpError('');
-    const rawNumber = phone.replace(/\D/g, '');
-    if (rawNumber.length < 10) {
-      setOtpError('Please enter a valid 10-digit mobile number.');
+    const cleanPh = phone.trim().replace(/\D/g, '');
+    if (!cleanPh || cleanPh.length < 7) {
+      setOtpError('Please enter a valid mobile number (e.g. 7981154788).');
       return;
     }
 
+    const fullNumber = formatE164Phone(phoneCountry, cleanPh);
     setOtpLoading(true);
-    const fullPhone = `${phoneCountry}${rawNumber.slice(-10)}`;
+
     try {
-      const data = await authApi.sendOtp(fullPhone, 'registration');
-      setOtpSent(true);
-      setOtpLoading(false);
-      setResendCooldown(25);
+      if (isFirebaseConfigured()) {
+        const confirmation = await sendFirebasePhoneOtp(fullNumber, 'recaptcha-container');
+        setFirebaseConfirmationResult(confirmation);
+        setOtpSent(true);
+        setOtpLoading(false);
+        setResendCooldown(30);
+        addToast(`Firebase SMS OTP dispatched to ${fullNumber}! Check your phone messages.`, 'success', 6000);
+      } else {
+        // Local / backend fallback if Firebase keys are not yet pasted into .env
+        const data = await authApi.sendOtp(fullNumber, 'registration');
+        setOtpSent(true);
+        setOtpLoading(false);
+        setResendCooldown(30);
+        if (data && data.devOtp) {
+          setOtpCode(data.devOtp);
+        }
+        addToast(
+          `SMS OTP initiated for ${fullNumber}. (Paste Firebase keys in .env for direct cellular delivery)`,
+          'info',
+          7000
+        );
+      }
 
       const interval = setInterval(() => {
         setResendCooldown((prev) => {
@@ -99,41 +123,43 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
           return prev - 1;
         });
       }, 1000);
-
-      if (data.previewCode) {
-        addToast(`OTP Sent to ${fullPhone}! Code: ${data.previewCode}`, 'info', 6000);
-        setOtpCode(data.previewCode); // Pre-fill for evaluator convenience
-      } else {
-        addToast(`6-Digit Verification Code sent to ${fullPhone}.`, 'success', 4000);
-      }
     } catch (err) {
       setOtpLoading(false);
-      setOtpError(err.message || 'Failed to dispatch OTP code.');
-      addToast(err.message || 'Failed to send OTP code.', 'error');
+      setOtpError(err.message || 'Failed to dispatch phone verification code.');
+      addToast(err.message || 'Failed to send SMS code.', 'error');
     }
   };
 
-  // Verify entered OTP code with backend cryptographic service
-  const handleVerifyOtp = async () => {
+  // Verify Phone OTP (Firebase or Backend)
+  const handleVerifyPhoneOtp = async () => {
     setOtpError('');
     if (!otpCode || otpCode.trim().length !== 6) {
-      setOtpError('Please enter the 6-digit code received on your phone.');
+      setOtpError('Please enter the 6-digit code received via SMS.');
       return;
     }
 
     setOtpLoading(true);
-    const fullPhone = `${phoneCountry}${phone.replace(/\D/g, '').slice(-10)}`;
     try {
-      const data = await authApi.verifyOtp(fullPhone, otpCode.trim());
-      setOtpLoading(false);
-      if (data.verified && data.verificationToken) {
+      if (firebaseConfirmationResult) {
+        const result = await verifyFirebasePhoneOtp(firebaseConfirmationResult, otpCode);
+        setOtpLoading(false);
         setPhoneVerified(true);
-        setVerificationToken(data.verificationToken);
-        addToast('Mobile phone number verified successfully by secure backend!', 'success');
+        setFirebaseToken(result.idToken);
+        setFirebaseUid(result.uid);
+        addToast('Phone number verified successfully via Firebase!', 'success');
+      } else {
+        const fullNumber = formatE164Phone(phoneCountry, phone);
+        const data = await authApi.verifyOtp(fullNumber, otpCode.trim());
+        setOtpLoading(false);
+        if (data.verified) {
+          setPhoneVerified(true);
+          if (data.verificationToken) setVerificationToken(data.verificationToken);
+          addToast('Phone number verified successfully!', 'success');
+        }
       }
     } catch (err) {
       setOtpLoading(false);
-      setOtpError(err.message || 'Incorrect verification code. Please check and try again.');
+      setOtpError(err.message || 'Incorrect verification code. Please check your SMS and try again.');
       addToast(err.message || 'Invalid verification code.', 'error');
     }
   };
@@ -171,15 +197,9 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
       return;
     }
 
-    const rawNumber = phone.replace(/\D/g, '');
-    if (rawNumber.length < 10) {
-      setError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-
     if (!phoneVerified) {
-      setError('Please verify your phone number via SMS OTP before completing registration.');
-      addToast('Phone number must be verified via OTP.', 'warning');
+      setError('Please verify your phone number via 6-digit SMS code before completing registration.');
+      addToast('Phone number must be verified via SMS OTP.', 'warning');
       return;
     }
 
@@ -198,7 +218,8 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
       return;
     }
 
-    const fullPhone = `${phoneCountry}${rawNumber.slice(-10)}`;
+    const cleanDigits = String(phone || '').replace(/\D/g, '');
+    const fullPhone = formatE164Phone(phoneCountry, cleanDigits);
     setLoading(true);
 
     try {
@@ -208,6 +229,9 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
         username: username.trim() || name.toLowerCase().replace(/\s+/g, ''),
         email: email.trim(),
         phone: fullPhone,
+        phoneVerified: true,
+        firebaseToken,
+        firebaseUid,
         gender,
         dob,
         password,
@@ -220,6 +244,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
         username: username.trim() || name.toLowerCase().replace(/\s+/g, ''),
         email: email.trim(),
         phone: fullPhone,
+        phoneVerified: true,
         gender,
         dob,
         password,
@@ -429,33 +454,33 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                   </div>
                 </div>
 
-                {/* 3. Phone Number with Real Backend OTP System */}
+                {/* 3. Phone Number & SMS Verification (Firebase Phone Auth) */}
                 <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Phone className="w-3.5 h-3.5 text-[#7256c3]" />
-                      <span>Phone Number & OTP Verification *</span>
+                      <span>Phone Number & SMS Verification *</span>
                     </label>
                     {phoneVerified && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                        <Check className="w-3 h-3" /> Verified by Backend
+                        <Check className="w-3 h-3" /> Verified via Firebase
                       </span>
                     )}
                   </div>
 
-                  {/* Phone Input Row */}
+                  {/* Phone Input with Country Code & Send SMS Button */}
                   <div className="flex gap-2">
                     <select
                       value={phoneCountry}
                       onChange={(e) => setPhoneCountry(e.target.value)}
                       disabled={phoneVerified}
-                      className="px-2.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-bold outline-none cursor-pointer shrink-0 disabled:opacity-75"
+                      className="px-2.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs font-bold outline-none cursor-pointer shrink-0 disabled:bg-slate-100"
                     >
-                      <option value="+91">🇮🇳 +91 (IN)</option>
-                      <option value="+1">🇺🇸 +1 (US)</option>
-                      <option value="+44">🇬🇧 +44 (UK)</option>
-                      <option value="+971">🇦🇪 +971 (UAE)</option>
-                      <option value="+65">🇸🇬 +65 (SG)</option>
+                      <option value="+91">🇮🇳 +91</option>
+                      <option value="+1">🇺🇸 +1</option>
+                      <option value="+44">🇬🇧 +44</option>
+                      <option value="+971">🇦🇪 +971</option>
+                      <option value="+65">🇸🇬 +65</option>
                     </select>
 
                     <div className="relative flex-1">
@@ -464,7 +489,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         disabled={phoneVerified}
-                        placeholder="98765 43210"
+                        placeholder="79811 54788"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs sm:text-sm font-mono font-medium focus:outline-none focus:border-[#7256c3] disabled:bg-slate-100 disabled:text-slate-600"
                         required
                       />
@@ -473,7 +498,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                     {!phoneVerified ? (
                       <button
                         type="button"
-                        onClick={handleSendOtp}
+                        onClick={handleSendPhoneOtp}
                         disabled={otpLoading || resendCooldown > 0}
                         className="px-3.5 py-2.5 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 disabled:opacity-50"
                       >
@@ -482,9 +507,9 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                         ) : resendCooldown > 0 ? (
                           `${resendCooldown}s`
                         ) : otpSent ? (
-                          'Resend OTP'
+                          'Resend SMS'
                         ) : (
-                          'Send OTP'
+                          'Send SMS Code'
                         )}
                       </button>
                     ) : (
@@ -494,7 +519,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                           setPhoneVerified(false);
                           setOtpSent(false);
                           setOtpCode('');
-                          setVerificationToken('');
+                          setFirebaseConfirmationResult(null);
                         }}
                         className="px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-xs font-bold cursor-pointer shrink-0"
                       >
@@ -503,6 +528,9 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                     )}
                   </div>
 
+                  {/* Firebase Invisible reCAPTCHA Mount Container */}
+                  <div id="recaptcha-container"></div>
+
                   {/* OTP Error Notice */}
                   {otpError && (
                     <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1">
@@ -510,7 +538,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                     </p>
                   )}
 
-                  {/* 6-Digit OTP Verification Box (Appears after code is dispatched) */}
+                  {/* 6-Digit SMS OTP Input Box (Appears after SMS is dispatched) */}
                   <AnimatePresence>
                     {otpSent && !phoneVerified && (
                       <motion.div
@@ -522,7 +550,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-slate-800 flex items-center gap-1.5">
                             <KeyRound className="w-3.5 h-3.5 text-[#7256c3]" />
-                            Enter 6-Digit Verification Code:
+                            Enter 6-Digit Code received on your mobile:
                           </span>
                           <span className="text-[11px] text-slate-400 font-mono">
                             Expires in 5 mins
@@ -535,20 +563,20 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                             maxLength={6}
                             value={otpCode}
                             onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                            placeholder="6-Digit OTP"
+                            placeholder="000000"
                             className="flex-1 text-center tracking-widest text-base font-mono font-extrabold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-slate-900 outline-none focus:border-[#7256c3]"
                           />
                           <button
                             type="button"
-                            onClick={handleVerifyOtp}
+                            onClick={handleVerifyPhoneOtp}
                             disabled={otpLoading || otpCode.length !== 6}
                             className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors disabled:opacity-50"
                           >
-                            {otpLoading ? 'Verifying...' : 'Verify OTP ✓'}
+                            {otpLoading ? 'Verifying...' : 'Verify Phone ✓'}
                           </button>
                         </div>
                         <p className="text-[10px] text-slate-500">
-                          Backend verification service generated and stored this code securely.
+                          🔒 Direct SMS verification via Firebase Authentication.
                         </p>
                       </motion.div>
                     )}
@@ -557,20 +585,20 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
 
                 {/* 4. Email Address */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    Email Address *
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-[#7256c3]" />
+                      Email Address *
+                    </span>
                   </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="raman.raj@example.com"
-                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#7256c3]/25 focus:border-[#7256c3] focus:bg-white transition-all font-medium"
-                      required
-                    />
-                  </div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. mr.mohitkumar004@gmail.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#7256c3] focus:bg-white"
+                    required
+                  />
                 </div>
 
                 {/* 5. Password with Strength Indicator */}

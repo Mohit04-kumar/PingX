@@ -2,13 +2,18 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export const authApi = {
-  // 1. Send OTP to phone number via backend cryptographic generator
-  async sendOtp(phone, purpose = 'registration') {
+  // 1. Send 6-Digit OTP to Email via backend Nodemailer / Gmail SMTP
+  async sendOtp(identity, purpose = 'registration') {
     try {
+      const clean = String(identity || '').trim();
+      const payload = clean.includes('@')
+        ? { email: clean.toLowerCase(), purpose }
+        : { phone: clean, purpose };
+
       const res = await fetch(`${API_BASE}/api/auth/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, purpose })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) {
@@ -22,12 +27,17 @@ export const authApi = {
   },
 
   // 2. Verify OTP with backend service
-  async verifyOtp(phone, code) {
+  async verifyOtp(identity, code) {
     try {
+      const clean = String(identity || '').trim();
+      const payload = clean.includes('@')
+        ? { email: clean.toLowerCase(), code }
+        : { phone: clean, code };
+
       const res = await fetch(`${API_BASE}/api/auth/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, code })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) {
@@ -40,7 +50,7 @@ export const authApi = {
     }
   },
 
-  // 3. Register user with detailed profile & verified phone
+  // 3. Register user with detailed profile & verified email
   async register(userData) {
     try {
       const res = await fetch(`${API_BASE}/api/auth/register`, {
@@ -78,21 +88,45 @@ export const authApi = {
     }
   },
 
-  // 5. Direct login with phone OTP
-  async loginWithOtp(phone, code) {
+  // 5. Direct login with Email OTP
+  async loginWithOtp(identity, code) {
     try {
+      const clean = String(identity || '').trim();
+      const payload = clean.includes('@')
+        ? { email: clean.toLowerCase(), code }
+        : { phone: clean, code };
+
       const res = await fetch(`${API_BASE}/api/auth/otp/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, code })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Phone OTP login failed.');
+        throw new Error(data.error || 'OTP login failed.');
       }
       return data;
     } catch (err) {
       console.error('loginWithOtp API error:', err);
+      throw err;
+    }
+  },
+
+  // 6. Direct login or account sync with Firebase Phone Auth
+  async loginWithFirebase(firebasePayload) {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/firebase/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(firebasePayload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Firebase phone authentication failed.');
+      }
+      return data;
+    } catch (err) {
+      console.error('loginWithFirebase API error:', err);
       throw err;
     }
   }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { PingsProvider, usePings } from './context/PingsContext';
@@ -43,22 +43,57 @@ import { useAuth } from './context/AuthContext';
 
 function AppContent() {
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState('landing'); // 'landing' | 'login' | 'register' | 'app'
+  
+  // Resolve initial view from browser URL pathname
+  const getInitialView = () => {
+    if (typeof window === 'undefined') return 'landing';
+    const path = window.location.pathname.toLowerCase();
+    if (path === '/signin' || path === '/login') return 'login';
+    if (path === '/register' || path === '/signup') return 'register';
+    if (path === '/app' || path === '/dashboard') return user ? 'app' : 'login';
+    return 'landing';
+  };
+
+  const [currentView, setCurrentView] = useState(getInitialView);
   const [activeTab, setActiveTab] = useState('home');
 
+  // Synchronize browser history and path changes
+  const navigateTo = (view, path = '/') => {
+    setCurrentView(view);
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', path);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase();
+      if (path === '/signin' || path === '/login') {
+        setCurrentView('login');
+      } else if (path === '/register' || path === '/signup') {
+        setCurrentView('register');
+      } else if (path === '/app' || path === '/dashboard') {
+        setCurrentView(user ? 'app' : 'login');
+      } else {
+        setCurrentView('landing');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [user]);
+
   const handleNavigateToLanding = () => {
-    setCurrentView('landing');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('landing', '/');
   };
 
   const handleOpenAuth = (mode = 'login') => {
-    if (user) {
-      setCurrentView('app');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+    if (mode === 'register') {
+      navigateTo('register', '/register');
+    } else {
+      navigateTo('login', '/signin');
     }
-    setCurrentView(mode === 'register' ? 'register' : 'login');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleEnterApp = (targetTab = 'home') => {
@@ -66,17 +101,16 @@ function AppContent() {
       setActiveTab(targetTab);
     }
     if (user) {
-      setCurrentView('app');
+      navigateTo('app', '/app');
     } else {
-      handleOpenAuth('login');
+      navigateTo('login', '/signin');
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Enforce security guard: Do not open dashboard directly without signing in
-  React.useEffect(() => {
+  useEffect(() => {
     if (currentView === 'app' && !user) {
-      setCurrentView('login');
+      navigateTo('login', '/signin');
     }
   }, [currentView, user]);
 
@@ -86,11 +120,8 @@ function AppContent() {
       {currentView === 'login' && (
         <SignInPage
           onNavigateToLanding={handleNavigateToLanding}
-          onNavigateToRegister={() => setCurrentView('register')}
-          onAuthSuccess={() => {
-            setCurrentView('app');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onNavigateToRegister={() => navigateTo('register', '/register')}
+          onAuthSuccess={() => navigateTo('app', '/app')}
         />
       )}
 
@@ -98,11 +129,8 @@ function AppContent() {
       {currentView === 'register' && (
         <RegisterPage
           onNavigateToLanding={handleNavigateToLanding}
-          onNavigateToLogin={() => setCurrentView('login')}
-          onAuthSuccess={() => {
-            setCurrentView('app');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onNavigateToLogin={() => navigateTo('login', '/signin')}
+          onAuthSuccess={() => navigateTo('app', '/app')}
         />
       )}
 
