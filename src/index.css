@@ -19,13 +19,22 @@
   }
 
   html {
-    scroll-behavior: smooth;
     scroll-padding-top: 5rem;
   }
 
+  html:not(.lenis) {
+    scroll-behavior: smooth;
+  }
+
+  html.lenis {
+    scroll-behavior: auto !important;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
+    html,
+    html:not(.lenis),
+    html.lenis {
+      scroll-behavior: auto !important;
     }
   }
 

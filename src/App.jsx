@@ -6,6 +6,7 @@ import { ChatProvider } from './context/ChatContext';
 import { ShopProvider } from './context/ShopContext';
 import { ToastProvider } from './context/ToastContext';
 import { AIContextContainer } from './context/AIContext';
+import { SmoothScrollProvider } from './context/SmoothScrollContext';
 
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
@@ -115,7 +116,8 @@ function AppContent() {
   }, [currentView, user]);
 
   return (
-    <AIContextContainer activeTab={activeTab} activeChat={null} activeProduct={null}>
+    <SmoothScrollProvider currentView={currentView}>
+      <AIContextContainer activeTab={activeTab} activeChat={null} activeProduct={null}>
       {/* ── View 1: Dedicated Sign In Page ── */}
       {currentView === 'login' && (
         <SignInPage
@@ -185,6 +187,7 @@ function AppContent() {
       <ToastContainer />
       <CartDrawer />
     </AIContextContainer>
+    </SmoothScrollProvider>
   );
 }
 

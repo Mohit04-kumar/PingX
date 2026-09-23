@@ -34,13 +34,21 @@ export function Navbar({ onEnterApp, onOpenAuth, isLoggedIn: propIsLoggedIn }) {
 
     const targetId = sectionMap[label];
     if (targetId) {
+      if (window.lenis) {
+        window.lenis.scrollTo(`#${targetId}`, { offset: -80, duration: 1.2 });
+        return;
+      }
       const el = document.getElementById(targetId);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth' });
         return;
       }
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (window.lenis) {
+      window.lenis.scrollTo(0, { duration: 1.1 });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (
