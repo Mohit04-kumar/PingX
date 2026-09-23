@@ -128,10 +128,10 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
       />
 
       {/* ── MAIN HERO GRID ── */}
-      <div className="max-w-7xl mx-auto w-full px-6 pt-16 sm:pt-20 pb-8 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center flex-1 my-auto">
+      <div className="max-w-7xl mx-auto w-full px-6 pt-12 sm:pt-16 lg:pt-20 pb-8 relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-14 items-center flex-1 my-auto">
         
         {/* ── LEFT: Dynamic Title, Deep Indigo Pill Badge & Royal Purple Pill CTA ── */}
-        <div className="lg:col-span-6 space-y-6 text-left">
+        <div className="md:col-span-6 space-y-5 lg:space-y-6 text-left">
           
           <AnimatePresence mode="wait">
             <motion.div
@@ -140,7 +140,7 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
               transition={{ duration: 0.25 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wide bg-violet-100 text-[#7256c3] border border-violet-200 shadow-xs"
+              className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-extrabold uppercase tracking-wide bg-violet-100 text-[#7256c3] border border-violet-200 shadow-xs"
             >
               <span>{slide.tag}</span>
             </motion.div>
@@ -153,25 +153,25 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
-              className="space-y-4"
+              className="space-y-3 sm:space-y-4"
             >
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-heading tracking-tight leading-[1.12] text-slate-900">
+              <h1 className="text-3xl sm:text-4xl md:text-3xl lg:text-5xl font-extrabold font-heading tracking-tight leading-[1.14] text-slate-900">
                 {slide.title}
               </h1>
 
-              <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal max-w-xl">
+              <p className="text-sm sm:text-base lg:text-lg text-slate-600 leading-relaxed font-normal max-w-xl">
                 {slide.description}
               </p>
             </motion.div>
           </AnimatePresence>
 
           {/* Action Pill Buttons */}
-          <div className="flex flex-wrap items-center gap-4 pt-2">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 pt-1 sm:pt-2">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onOpenAuth ? onOpenAuth('register') : onEnterApp()}
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm text-white bg-[#7256c3] hover:bg-[#6348b6] shadow-lg shadow-[#7256c3]/25 transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-full font-bold text-xs sm:text-sm text-white bg-[#7256c3] hover:bg-[#6348b6] shadow-lg shadow-[#7256c3]/25 transition-all cursor-pointer"
             >
               <span>{slide.primaryAction}</span>
               <ArrowRight className="w-4 h-4" />
@@ -181,14 +181,14 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onOpenAuth ? onOpenAuth('login') : onEnterApp()}
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm text-slate-800 bg-white border border-[#e6e2f8] hover:bg-[#f8f7ff] shadow-xs transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-full font-bold text-xs sm:text-sm text-slate-800 bg-white border border-[#e6e2f8] hover:bg-[#f8f7ff] shadow-xs transition-all cursor-pointer"
             >
               <span>{slide.secondaryAction}</span>
             </motion.button>
           </div>
 
           {/* Trust Indicators */}
-          <div className="flex items-center gap-6 text-xs font-semibold text-slate-500 pt-3 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-[11px] sm:text-xs font-semibold text-slate-500 pt-3 border-t border-slate-100">
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#7256c3]" />
               100% Privacy Preserved
@@ -202,7 +202,7 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
         </div>
 
         {/* ── RIGHT: Real Website UI Screenshots & Realistic Previews ── */}
-        <div className="lg:col-span-6 flex justify-center items-center">
+        <div className="md:col-span-6 flex justify-center items-center w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={`ui-${currentSlide}`}
@@ -210,7 +210,7 @@ export function HeroSection({ onOpenAuth, onEnterApp }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: -12 }}
               transition={{ duration: 0.3 }}
-              className="w-full max-w-lg rounded-3xl border border-[#e6e2f8] bg-white shadow-2xl overflow-hidden"
+              className="w-full max-w-[520px] lg:max-w-lg rounded-3xl border border-[#e6e2f8] bg-white shadow-2xl overflow-hidden"
               style={{ boxShadow: '0 20px 45px -10px rgba(114, 86, 195, 0.12)' }}
             >
 
