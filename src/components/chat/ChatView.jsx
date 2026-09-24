@@ -5,6 +5,7 @@ import { GroupSummaryModal } from './GroupSummaryModal';
 import { AddContactModal } from './AddContactModal';
 import { EmojiPicker } from './EmojiPicker';
 import { Avatar } from '../common/Avatar';
+import { useProfileModal } from '../../context/ProfileModalContext';
 import { 
   Send, 
   Smile, 
@@ -57,6 +58,7 @@ export function ChatView() {
     convertActionableToPing
   } = useChat();
   const { user, accounts = [] } = useAuth();
+  const { openUserProfile } = useProfileModal();
 
   const [inputContent, setInputContent] = useState('');
   const [chatSearch, setChatSearch] = useState('');
@@ -120,6 +122,18 @@ export function ChatView() {
     if (!inChatSearchQuery.trim()) return true;
     return msg.content.toLowerCase().includes(inChatSearchQuery.toLowerCase());
   });
+
+  // Listen for direct chat requests (e.g. from UserProfileModal)
+  React.useEffect(() => {
+    const handler = (e) => {
+      const targetUser = e?.detail;
+      if (targetUser && startDirectChat) {
+        startDirectChat(targetUser);
+      }
+    };
+    window.addEventListener('pingx:startDirectChat', handler);
+    return () => window.removeEventListener('pingx:startDirectChat', handler);
+  }, [startDirectChat]);
 
   const handleSend = (e) => {
     e.preventDefault();
@@ -363,7 +377,15 @@ export function ChatView() {
                   }
                 >
                   <div className="flex items-center gap-3 truncate">
-                    <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (chat.user) openUserProfile(chat.user);
+                      }}
+                      className="relative shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                      title={chat.user ? `View ${chat.user.name}'s Profile` : undefined}
+                    >
                       <Avatar 
                         src={chat.user?.avatar || chat.group?.avatar} 
                         name={chat.user?.name || chat.group?.name || 'Contact'} 
@@ -373,7 +395,7 @@ export function ChatView() {
                         className="border"
                         style={{ borderColor: 'var(--border)' }}
                       />
-                    </div>
+                    </button>
 
                     <div className="truncate">
                       <h5 className="text-xs font-bold flex items-center gap-1.5 truncate" style={{ color: 'var(--text-primary)' }}>
@@ -447,17 +469,33 @@ export function ChatView() {
           <>
             {/* Chat Header */}
             <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-              <div className="flex items-center gap-3">
-                <Avatar
-                  src={activeChat?.user?.avatar || activeChat?.group?.avatar}
-                  name={activeChat?.user?.name || activeChat?.group?.name || 'Contact'}
-                  size="md"
-                  className="border"
-                  style={{ borderColor: 'var(--accent)' }}
-                />
+              <div 
+                className="flex items-center gap-3 cursor-pointer group hover:opacity-95 transition-opacity"
+                onClick={() => {
+                  if (activeChat?.user) {
+                    openUserProfile(activeChat.user);
+                  }
+                }}
+                title={activeChat?.user ? `View ${activeChat.user.name}'s Profile` : undefined}
+              >
+                <div className="relative">
+                  <Avatar
+                    src={activeChat?.user?.avatar || activeChat?.group?.avatar}
+                    name={activeChat?.user?.name || activeChat?.group?.name || 'Contact'}
+                    size="md"
+                    className="border transition-transform group-hover:scale-105"
+                    style={{ borderColor: 'var(--accent)' }}
+                  />
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white" />
+                </div>
                 <div>
-                  <h4 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    {activeChat?.user?.name || activeChat?.group?.name}
+                  <h4 className="text-sm font-bold flex items-center gap-2 group-hover:text-[#7256c3] transition-colors" style={{ color: 'var(--text-primary)' }}>
+                    <span>{activeChat?.user?.name || activeChat?.group?.name}</span>
+                    {activeChat?.user && (
+                      <span className="text-[10px] font-semibold text-[#7256c3] bg-violet-50 px-2 py-0.5 rounded-full">
+                        View Profile ›
+                      </span>
+                    )}
                     {activeChat?.type === 'group' && (
                       <span className="text-[10px] px-2 py-0.5 rounded font-mono border" style={{ backgroundColor: 'var(--accent-soft)', borderColor: 'var(--border)', color: 'var(--accent)' }}>
                         {activeChat?.group?.membersCount} members

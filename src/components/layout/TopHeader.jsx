@@ -11,10 +11,16 @@ export function TopHeader({
   onToggleSidebar, 
   isSidebarExpanded, 
   onToggleSidebarExpand, 
-  onNavigateToLanding 
+  onNavigateToLanding,
+  onOpenNotifications
 }) {
   const { unreadCount, pings, markAsRead, markAllAsRead } = usePings();
-  const { user, isGuest, guestSecondsLeft, openAuthModal, updateProfile } = useAuth();
+  const { user, isGuest, guestSecondsLeft, openAuthModal, updateProfile, friendRequests = [] } = useAuth();
+
+  const incomingRequests = (friendRequests || []).filter(
+    (req) => req.receiverId === user?.id && req.status === 'pending'
+  );
+  const totalNotifications = (unreadCount || 0) + incomingRequests.length;
 
   const [showPingsDropdown, setShowPingsDropdown] = useState(false);
   const pingsRef = useRef(null);
@@ -127,68 +133,27 @@ export function TopHeader({
           <Search className="w-4 h-4" />
         </button>
 
-        {/* Notifications */}
-        <div className="relative" ref={pingsRef}>
+        {/* Notifications Trigger */}
+        <div className="relative">
           <button
-            onClick={() => setShowPingsDropdown(!showPingsDropdown)}
-            className="p-2.5 rounded-xl cursor-pointer relative border"
+            onClick={() => {
+              if (onOpenNotifications) {
+                onOpenNotifications();
+              } else {
+                setShowPingsDropdown(!showPingsDropdown);
+              }
+            }}
+            className="p-2.5 rounded-2xl cursor-pointer relative border transition-all hover:bg-slate-100 hover:border-violet-200"
             style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-            title="Notifications & Activity"
+            title="Notifications & Friend Requests"
           >
-            <Bell className="w-4.5 h-4.5" style={{ color: 'var(--accent)' }} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 text-[9px] font-black rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: 'var(--accent)', color: '#fff' }}>
-                {unreadCount}
+            <Bell className="w-5 h-5 text-[#7256c3]" />
+            {totalNotifications > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 text-[10px] font-black rounded-full flex items-center justify-center bg-rose-500 text-white shadow-xs border-2 border-white animate-pulse">
+                {totalNotifications > 99 ? '99+' : totalNotifications}
               </span>
             )}
           </button>
-
-          {showPingsDropdown && (
-            <div
-              className="absolute right-0 mt-2 w-80 rounded-2xl p-4 border shadow-2xl z-50 space-y-3 animate-fadeIn backdrop-blur-xl"
-              style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
-            >
-              <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--border)' }}>
-                <span className="text-xs font-black uppercase" style={{ color: 'var(--text-primary)' }}>Recent Activity</span>
-                <div className="flex items-center gap-3">
-                  <button onClick={markAllAsRead} className="text-[10px] font-bold flex items-center gap-0.5 cursor-pointer" style={{ color: 'var(--accent)' }}>
-                    <CheckCheck className="w-3 h-3" /> Read All
-                  </button>
-                  <span className="text-[11px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                    ({pings.length})
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {pings.length === 0 ? (
-                  <p className="text-center py-4 text-xs" style={{ color: 'var(--text-muted)' }}>No activity yet.</p>
-                ) : pings.slice(0, 4).map((ping) => (
-                  <div
-                    key={ping.id}
-                    onClick={() => { 
-                      markAsRead(ping.id); 
-                      if (ping.action?.type === 'open_chat') setActiveTab('chats'); 
-                      if (ping.action?.type === 'open_product') setActiveTab('shop'); 
-                      setShowPingsDropdown(false); 
-                    }}
-                    className="p-3 rounded-xl text-xs space-y-1 cursor-pointer border transition-colors"
-                    style={{
-                      backgroundColor: 'var(--bg-subtle)',
-                      borderColor: !ping.read ? 'var(--accent)' : 'transparent',
-                      opacity: ping.read ? 0.7 : 1,
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black" style={{ color: 'var(--accent)' }}>{ping.badge}</span>
-                      {!ping.read && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />}
-                    </div>
-                    <h5 className="font-bold" style={{ color: 'var(--text-primary)' }}>{ping.title}</h5>
-                    <p className="line-clamp-1" style={{ color: 'var(--text-secondary)' }}>{ping.content}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* User Account Avatar (SmoothUI) */}

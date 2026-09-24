@@ -1,4 +1,9 @@
 const path = require('path');
+const dns = require('dns');
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {}
+
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 require('dotenv').config();
 const express = require('express');
@@ -8,6 +13,7 @@ const bodyParser = require('body-parser');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+
 
 // Database configuration & models
 const connectDB = require('./config/db');
@@ -74,10 +80,12 @@ app.get('/api/users', async (req, res) => {
         };
       }
       const users = await User.find(queryObj).limit(50).lean();
-      return res.json(users);
+      if (users && users.length > 0) {
+        return res.json(users);
+      }
     }
 
-    // Fallback
+    // Fallback to data.accounts from state.json
     if (!q) return res.json(data.accounts);
     const matches = data.accounts.filter(
       (a) =>
@@ -344,7 +352,10 @@ app.post('/api/auth/login', async (req, res) => {
           { id: trimmed }
         ]
       }).lean();
-    } else {
+    }
+    
+    // Fallback to local accounts in state.json if not found in MongoDB
+    if (!found) {
       found = data.accounts.find(
         (a) =>
           a.email?.toLowerCase() === trimmed.toLowerCase() ||
@@ -406,7 +417,7 @@ app.post('/api/auth/register', async (req, res) => {
     const cleanUsername = username.trim().toLowerCase().replace(/\s+/g, '');
     const cleanPhone = phone ? sanitizePhone(phone) : '';
 
-    // Check for existing user with same email or username
+    // Check for existing user with same email or username in DB and local store
     let existing = null;
     if (isDbConnected()) {
       existing = await User.findOne({
@@ -415,7 +426,8 @@ app.post('/api/auth/register', async (req, res) => {
           { username: cleanUsername }
         ]
       }).lean();
-    } else {
+    }
+    if (!existing) {
       existing = data.accounts.find(
         (a) => a.email?.toLowerCase() === cleanEmail || a.username?.toLowerCase() === cleanUsername
       );
@@ -432,14 +444,14 @@ app.post('/api/auth/register', async (req, res) => {
     const newUserData = {
       id,
       name: name.trim(),
-      username: username.trim().toLowerCase(),
-      email: email.trim().toLowerCase(),
+      username: cleanUsername,
+      email: cleanEmail,
       password: password || '',
       phone: cleanPhone,
       phoneVerified: true,
       gender: gender.trim(),
       dob: dob.trim(),
-      avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username.trim())}`,
+      avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanUsername)}`,
       bio: bio || 'PingX Member',
       location: location || 'India',
       profileSetupCompleted: true,
@@ -450,22 +462,24 @@ app.post('/api/auth/register', async (req, res) => {
 
     let createdUser = null;
     if (isDbConnected()) {
-      // Check if username, email or phone already exists
-      const existing = await User.findOne({
-        $or: [
-          { email: newUserData.email }, 
-          { username: newUserData.username },
-          { phone: newUserData.phone }
-        ]
-      });
-      if (existing) {
-        return res.status(409).json({ error: 'Email, username, or phone number already registered.' });
-      } else {
+      try {
         const doc = await User.create(newUserData);
         createdUser = doc.toJSON();
+      } catch (dbErr) {
+        console.warn('MongoDB User.create warning, saving to local fallback:', dbErr.message);
       }
+    }
+
+    // Always ensure saved in data.accounts and persisted to state.json
+    const existingIndex = data.accounts.findIndex((a) => a.email?.toLowerCase() === cleanEmail || a.id === id);
+    if (existingIndex >= 0) {
+      data.accounts[existingIndex] = createdUser || newUserData;
     } else {
-      data.accounts.unshift(newUserData);
+      data.accounts.unshift(createdUser || newUserData);
+    }
+    data.saveState();
+
+    if (!createdUser) {
       createdUser = newUserData;
     }
 
@@ -568,6 +582,25 @@ app.post('/api/friend-request', async (req, res) => {
   } catch (err) {
     console.error('Error in friend-request:', err);
     res.status(500).json({ success: false, error: 'Friend request failed' });
+  }
+});
+
+app.get('/api/friend-requests/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (isDbConnected()) {
+      const requests = await FriendRequest.find({
+        $or: [{ receiverId: userId }, { senderId: userId }]
+      }).sort({ createdAt: -1 }).lean();
+      return res.json(requests);
+    }
+    const requests = (data.friendRequests || []).filter(
+      (r) => r.receiverId === userId || r.senderId === userId
+    );
+    res.json(requests);
+  } catch (err) {
+    console.error('Error fetching friend requests:', err);
+    res.status(500).json({ error: 'Failed to fetch friend requests' });
   }
 });
 

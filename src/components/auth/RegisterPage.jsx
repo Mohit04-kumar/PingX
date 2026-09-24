@@ -120,32 +120,27 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
     setLoading(true);
 
     try {
-      // 1. Submit to Backend Express Server
-      await authApi.register({
+      // 1. Register account (persisted to database & safe local store, autoLogin set to false)
+      await register({
         name: name.trim(),
         username: username.trim() || name.toLowerCase().replace(/\s+/g, ''),
         email: email.trim(),
         phone: fullPhone,
         gender,
         dob,
-        password
-      });
-
-      // 2. Sync local Auth Context
-      register({
-        name: name.trim(),
-        username: username.trim() || name.toLowerCase().replace(/\s+/g, ''),
-        email: email.trim(),
-        phone: fullPhone,
-        gender,
-        dob,
-        password
+        password,
+        autoLogin: false
       });
 
       setLoading(false);
-      addToast(`Welcome to PingX, ${name.split(' ')[0]}! Your account is created and ready.`, 'success');
-      if (onAuthSuccess) onAuthSuccess();
-      else onNavigateToLanding();
+      addToast('Account created successfully! Please sign in with your password to continue.', 'success', 4000);
+      
+      // Redirect to sign in page with email pre-filled for direct verification
+      if (onNavigateToLogin) {
+        onNavigateToLogin(email.trim() || username.trim());
+      } else {
+        onNavigateToLanding();
+      }
     } catch (err) {
       setLoading(false);
       setError(err.message || 'Registration failed. Please try again.');
@@ -610,19 +605,25 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={() => {
-                  register({
-                    name: 'Raman Raj',
-                    username: 'ramanraj',
-                    email: 'raman@pingx.app',
-                    phone: '+919876543210',
-                    gender: 'Male',
-                    dob: '1998-05-20',
-                    password: 'google_verified_auth'
-                  });
-                  setShowGoogleModal(false);
-                  addToast('Registered with Google as Raman Raj!', 'success', 2500);
-                  if (onAuthSuccess) onAuthSuccess();
+                onClick={async () => {
+                  try {
+                    await register({
+                      name: 'Raman Raj',
+                      username: 'ramanraj',
+                      email: 'raman@pingx.app',
+                      phone: '+919876543210',
+                      gender: 'Male',
+                      dob: '1998-05-20',
+                      password: 'google_verified_auth',
+                      autoLogin: false
+                    });
+                    setShowGoogleModal(false);
+                    addToast('Google profile registered! Please sign in to verify your credentials.', 'success', 3500);
+                    if (onNavigateToLogin) onNavigateToLogin('raman@pingx.app');
+                    else onNavigateToLanding();
+                  } catch (err) {
+                    addToast(err.message || 'Google registration failed.', 'error');
+                  }
                 }}
                 className="w-full p-3 rounded-2xl border border-slate-200 hover:border-[#7256c3] bg-slate-50 hover:bg-white transition-all flex items-center gap-3 text-left cursor-pointer"
               >
@@ -639,19 +640,25 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
 
               <button
                 type="button"
-                onClick={() => {
-                  register({
-                    name: 'Mohit Kumar',
-                    username: 'mohit04',
-                    email: 'mr.mohitkumar004@gmail.com',
-                    phone: '+919876543211',
-                    gender: 'Male',
-                    dob: '2001-08-12',
-                    password: 'google_verified_auth'
-                  });
-                  setShowGoogleModal(false);
-                  addToast('Registered with Google as Mohit Kumar!', 'success', 2500);
-                  if (onAuthSuccess) onAuthSuccess();
+                onClick={async () => {
+                  try {
+                    await register({
+                      name: 'Mohit Kumar',
+                      username: 'mohit04',
+                      email: 'mr.mohitkumar004@gmail.com',
+                      phone: '+919876543211',
+                      gender: 'Male',
+                      dob: '2001-08-12',
+                      password: 'google_verified_auth',
+                      autoLogin: false
+                    });
+                    setShowGoogleModal(false);
+                    addToast('Google profile registered! Please sign in to verify your credentials.', 'success', 3500);
+                    if (onNavigateToLogin) onNavigateToLogin('mr.mohitkumar004@gmail.com');
+                    else onNavigateToLanding();
+                  } catch (err) {
+                    addToast(err.message || 'Google registration failed.', 'error');
+                  }
                 }}
                 className="w-full p-3 rounded-2xl border border-slate-200 hover:border-[#7256c3] bg-slate-50 hover:bg-white transition-all flex items-center gap-3 text-left cursor-pointer"
               >

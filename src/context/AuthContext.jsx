@@ -135,13 +135,30 @@ export function AuthProvider({ children }) {
   const openProfileSetup = () => setIsProfileSetupOpen(true);
   const closeProfileSetup = () => setIsProfileSetupOpen(false);
 
-  // Automatically fetch registered users from MongoDB Atlas on load
+  // Automatically fetch registered users from MongoDB Atlas on load without wiping local accounts
   useEffect(() => {
     fetch(`${API_BASE}/api/users`)
       .then((r) => r.json())
       .then((remote) => {
-        if (Array.isArray(remote)) {
-          setAccounts(remote);
+        if (Array.isArray(remote) && remote.length > 0) {
+          setAccounts((prev) => {
+            const merged = [...remote];
+            (prev || []).forEach((localAcc) => {
+              if (
+                !isDemoOrDummy(localAcc) &&
+                !merged.some(
+                  (m) =>
+                    (m.id && m.id === localAcc.id) ||
+                    (m.email && localAcc.email && m.email.toLowerCase() === localAcc.email.toLowerCase()) ||
+                    (m.username && localAcc.username && m.username.toLowerCase() === localAcc.username.toLowerCase())
+                )
+              ) {
+                merged.push(localAcc);
+              }
+            });
+            safeStorage.setItem(STORAGE_KEY, merged);
+            return merged;
+          });
         }
       })
       .catch(() => {});
@@ -154,6 +171,32 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     safeStorage.setItem(REQUESTS_KEY, friendRequests);
   }, [friendRequests]);
+
+  // Sync friend requests with server for active user
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchRequests = () => {
+      fetch(`${API_BASE}/api/friend-requests/${user.id}`)
+        .then((r) => r.json())
+        .then((remote) => {
+          if (Array.isArray(remote)) {
+            setFriendRequests((prev) => {
+              const map = new Map();
+              (prev || []).forEach((r) => map.set(r.id, r));
+              remote.forEach((r) => map.set(r.id, { ...map.get(r.id), ...r }));
+              const merged = Array.from(map.values());
+              safeStorage.setItem(REQUESTS_KEY, merged);
+              return merged;
+            });
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchRequests();
+    const interval = setInterval(fetchRequests, 5000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   useEffect(() => {
     if (user) {
@@ -181,20 +224,33 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ identity: sanitized, password })
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed. Please check your credentials.');
-      }
-      if (data.token && data.user) {
-        setToken(data.token);
+      if (res.ok && data.user) {
+        setToken(data.token || null);
         setUser(data.user);
         setIsAuthenticated(true);
         setIsGuest(false);
-        safeStorage.setItem('pingx_token', data.token);
+        if (data.token) safeStorage.setItem('pingx_token', data.token);
         safeStorage.setItem('pingx_active_user', data.user);
+        setAccounts((prev) => {
+          if (!prev.some((a) => a.id === data.user.id || a.email?.toLowerCase() === data.user.email?.toLowerCase())) {
+            const upd = [data.user, ...prev];
+            safeStorage.setItem(STORAGE_KEY, upd);
+            return upd;
+          }
+          return prev;
+        });
         return { success: true, user: data.user };
       }
+      if (!res.ok && res.status === 401) {
+        throw new Error(data.error || 'Incorrect password. Please try again.');
+      }
     } catch (netErr) {
-      if (netErr.message && !netErr.message.includes('Failed to fetch') && !netErr.message.includes('NetworkError')) {
+      if (
+        netErr.message &&
+        !netErr.message.includes('Failed to fetch') &&
+        !netErr.message.includes('NetworkError') &&
+        !netErr.message.includes('Account not found')
+      ) {
         throw netErr;
       }
     }
@@ -202,7 +258,8 @@ export function AuthProvider({ children }) {
     // 2. Offline / Local fallback verification
     const found = accounts.find((a) => 
       a.email?.toLowerCase() === sanitized.toLowerCase() || 
-      a.username?.toLowerCase() === sanitized.toLowerCase()
+      a.username?.toLowerCase() === sanitized.toLowerCase() ||
+      (a.phone && String(a.phone).replace(/\D/g, '') === sanitized.replace(/\D/g, ''))
     );
 
     if (found) {
@@ -216,25 +273,10 @@ export function AuthProvider({ children }) {
       return { success: true, user: found };
     }
 
-    const fallbackUser = {
-      id: `usr_${Date.now()}`,
-      name: sanitized.includes('@') ? sanitized.split('@')[0] : sanitized,
-      username: sanitized.replace(/\s+/g, '').toLowerCase(),
-      email: sanitized.includes('@') ? sanitized : `${sanitized}@pingx.app`,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-      bio: 'PingX Community Member',
-      role: 'Member',
-      location: 'India',
-      joinedDate: new Date().getFullYear().toString()
-    };
-    setUser(fallbackUser);
-    setIsAuthenticated(true);
-    setIsGuest(false);
-    safeStorage.setItem('pingx_active_user', fallbackUser);
-    return { success: true, user: fallbackUser };
+    throw new Error('Account not found. Please register first.');
   };
 
-  const register = async ({ name, username, email, phone, gender, dob, password, avatar, bio, location }) => {
+  const register = async ({ name, username, email, phone, gender, dob, password, avatar, bio, location, autoLogin = false }) => {
     const cleanUsername = (username || name || 'user').toLowerCase().replace(/\s+/g, '');
     const cleanPhone = String(phone || '').replace(/[\s()-]/g, '');
     const newUser = {
@@ -256,12 +298,22 @@ export function AuthProvider({ children }) {
       joinedDate: new Date().getFullYear().toString()
     };
 
-    setAccounts((prev) => [newUser, ...prev]);
-    setUser(newUser);
-    setIsAuthenticated(true);
-    setIsGuest(false);
-    setIsProfileSetupOpen(false);
-    safeStorage.setItem('pingx_active_user', newUser);
+    // Save locally
+    setAccounts((prev) => {
+      const updated = [
+        newUser,
+        ...(prev || []).filter(
+          (a) =>
+            a.email?.toLowerCase() !== newUser.email.toLowerCase() &&
+            a.username?.toLowerCase() !== newUser.username.toLowerCase()
+        )
+      ];
+      safeStorage.setItem(STORAGE_KEY, updated);
+      return updated;
+    });
+
+    let backendUser = null;
+    let backendToken = null;
 
     // Sync with remote backend service
     try {
@@ -269,28 +321,50 @@ export function AuthProvider({ children }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
+          name: newUser.name,
           username: cleanUsername,
-          email,
+          email: newUser.email,
           phone: cleanPhone,
-          gender,
-          dob,
-          password,
+          gender: newUser.gender,
+          dob: newUser.dob,
+          password: newUser.password,
           avatar: newUser.avatar,
           bio: newUser.bio,
           location: newUser.location
         })
       });
       const json = await res.json();
-      if (res.ok && json.token && json.user) {
-        setToken(json.token);
-        setUser(json.user);
-        safeStorage.setItem('pingx_token', json.token);
-        safeStorage.setItem('pingx_active_user', json.user);
+      if (!res.ok) {
+        throw new Error(json.error || 'Registration failed on server.');
       }
-    } catch (e) {}
+      if (json.user) {
+        backendUser = json.user;
+      }
+      if (json.token) {
+        backendToken = json.token;
+      }
+    } catch (e) {
+      if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('NetworkError')) {
+        throw e;
+      }
+    }
 
-    return { success: true, user: newUser };
+    const finalUser = backendUser || newUser;
+
+    // Only set as active session if autoLogin is explicitly true
+    if (autoLogin) {
+      setUser(finalUser);
+      setIsAuthenticated(true);
+      setIsGuest(false);
+      setIsProfileSetupOpen(false);
+      safeStorage.setItem('pingx_active_user', finalUser);
+      if (backendToken) {
+        setToken(backendToken);
+        safeStorage.setItem('pingx_token', backendToken);
+      }
+    }
+
+    return { success: true, user: finalUser };
   };
 
   const loginWithOtp = async (identity, code) => {

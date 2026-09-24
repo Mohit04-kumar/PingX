@@ -7,6 +7,7 @@ import { ShopProvider } from './context/ShopContext';
 import { ToastProvider } from './context/ToastContext';
 import { AIContextContainer } from './context/AIContext';
 import { SmoothScrollProvider } from './context/SmoothScrollContext';
+import { ProfileModalProvider } from './context/ProfileModalContext';
 
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
@@ -57,6 +58,7 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState(getInitialView);
   const [activeTab, setActiveTab] = useState('home');
+  const [authPrefillIdentity, setAuthPrefillIdentity] = useState('');
 
   // Synchronize browser history and path changes
   const navigateTo = (view, path = '/') => {
@@ -115,15 +117,29 @@ function AppContent() {
     }
   }, [currentView, user]);
 
+  const handleStartChatWithUser = (targetUser) => {
+    setActiveTab('chats');
+    if (targetUser) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('pingx:startDirectChat', { detail: targetUser }));
+      }, 50);
+    }
+  };
+
   return (
+    <ProfileModalProvider onStartChat={handleStartChatWithUser}>
     <SmoothScrollProvider currentView={currentView}>
       <AIContextContainer activeTab={activeTab} activeChat={null} activeProduct={null}>
       {/* ── View 1: Dedicated Sign In Page ── */}
       {currentView === 'login' && (
         <SignInPage
           onNavigateToLanding={handleNavigateToLanding}
-          onNavigateToRegister={() => navigateTo('register', '/register')}
+          onNavigateToRegister={() => {
+            setAuthPrefillIdentity('');
+            navigateTo('register', '/register');
+          }}
           onAuthSuccess={() => navigateTo('app', '/app')}
+          initialIdentity={authPrefillIdentity}
         />
       )}
 
@@ -131,7 +147,10 @@ function AppContent() {
       {currentView === 'register' && (
         <RegisterPage
           onNavigateToLanding={handleNavigateToLanding}
-          onNavigateToLogin={() => navigateTo('login', '/signin')}
+          onNavigateToLogin={(prefill) => {
+            setAuthPrefillIdentity(typeof prefill === 'string' ? prefill : '');
+            navigateTo('login', '/signin');
+          }}
           onAuthSuccess={() => navigateTo('app', '/app')}
         />
       )}
@@ -188,6 +207,7 @@ function AppContent() {
       <CartDrawer />
     </AIContextContainer>
     </SmoothScrollProvider>
+    </ProfileModalProvider>
   );
 }
 

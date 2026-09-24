@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Search, Play, Heart, MessageCircle, Eye, SlidersHorizontal, Tag, ExternalLink, X } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, Play, Heart, MessageCircle, Eye, SlidersHorizontal, Tag, ExternalLink, X, User } from 'lucide-react';
 import { Avatar } from '../common/Avatar';
+import { useAuth } from '../../context/AuthContext';
+import { useProfileModal } from '../../context/ProfileModalContext';
 
 const EXPLORE_POSTS = [
   {
@@ -98,19 +100,62 @@ const EXPLORE_POSTS = [
 ];
 
 export function ExploreView() {
+  const { accounts = [], user } = useAuth();
+  const { openUserProfile } = useProfileModal();
   const [search, setSearch] = useState('');
   const [selectedPost, setSelectedPost] = useState(null);
 
-  const filtered = EXPLORE_POSTS.filter((p) => {
+  // Combine user-created posts + genuine accounts showcase posts + curated explore items
+  const allPosts = useMemo(() => {
+    let userPosts = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem('pingx_user_posts') || '[]');
+      if (Array.isArray(saved)) {
+        userPosts = saved.map((p) => ({
+          id: p.id,
+          type: 'image',
+          image: p.image,
+          title: p.title || p.caption || 'Community Post',
+          author: p.author?.username || p.author?.name || user?.username || 'user',
+          authorData: p.author || user,
+          likes: `${p.likesCount || 1}`,
+          comments: `${p.commentsCount || 0}`,
+          isReel: false,
+          aspect: 'square'
+        }));
+      }
+    } catch {}
+
+    // Posts for real registered accounts
+    const accountPosts = accounts
+      .filter((a) => a.id !== user?.id && a.avatar)
+      .slice(0, 3)
+      .map((a, idx) => ({
+        id: `account_post_${a.id}`,
+        type: idx % 2 === 0 ? 'image' : 'video',
+        image: a.avatar,
+        title: a.bio || `${a.name}'s verified showcase`,
+        author: a.username || a.name,
+        authorData: a,
+        likes: `${12 + idx * 8}`,
+        comments: `${2 + idx * 3}`,
+        isReel: idx % 2 !== 0,
+        aspect: 'square'
+      }));
+
+    return [...userPosts, ...accountPosts, ...EXPLORE_POSTS];
+  }, [accounts, user]);
+
+  const filtered = allPosts.filter((p) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return p.title.toLowerCase().includes(q) || p.author.toLowerCase().includes(q);
+    return p.title.toLowerCase().includes(q) || String(p.author).toLowerCase().includes(q);
   });
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn pb-16 text-slate-900">
       
-      {/* Top Search Bar (Matching Image 3) */}
+      {/* Top Search Bar */}
       <div className="max-w-md mx-auto">
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
@@ -118,13 +163,13 @@ export function ExploreView() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search accounts, reels, reviews or tags..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white border border-[#e6e2f8] text-xs text-slate-900 outline-none focus:border-[#7256c3] shadow-xs transition-colors"
+            placeholder="Search accounts, reviews, media or topics..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white border border-[#e6e2f8] text-xs text-slate-900 outline-none focus:border-[#7256c3] shadow-xs transition-colors font-medium"
           />
         </div>
       </div>
 
-      {/* Dynamic Explore Grid (Matching Image 3) */}
+      {/* Dynamic Explore Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
         {filtered.map((post) => (
           <div
@@ -148,15 +193,16 @@ export function ExploreView() {
             )}
 
             {/* Hover overlay with likes & comments */}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-2 text-white font-bold text-xs p-4 text-center">
+            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-2 text-white font-bold text-xs p-4 text-center">
               <p className="line-clamp-2 text-xs font-semibold">{post.title}</p>
+              <span className="text-[11px] text-violet-200">@{post.author}</span>
               <div className="flex items-center gap-4 pt-1">
                 <div className="flex items-center gap-1">
-                  <Heart className="w-4 h-4 fill-white" />
+                  <Heart className="w-4 h-4 fill-white text-white" />
                   <span>{post.likes}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <MessageCircle className="w-4 h-4 fill-white" />
+                  <MessageCircle className="w-4 h-4 fill-white text-white" />
                   <span>{post.comments}</span>
                 </div>
               </div>
@@ -181,26 +227,66 @@ export function ExploreView() {
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="sm:w-1/2 bg-slate-900">
-              <img src={selectedPost.image} alt={selectedPost.title} className="w-full h-full object-cover min-h-[300px]" />
+            <div className="sm:w-1/2 bg-slate-900 flex items-center justify-center">
+              <img src={selectedPost.image} alt={selectedPost.title} className="w-full h-full object-cover min-h-[300px] max-h-[450px]" />
             </div>
             <div className="sm:w-1/2 p-6 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                  <span className="font-bold text-xs text-slate-900">@{selectedPost.author}</span>
-                </div>
-                <h4 className="font-bold text-sm text-slate-900 font-heading">{selectedPost.title}</h4>
+                {/* Author row with click to open profile */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const postAuthor = selectedPost.authorData || accounts.find(
+                      (a) => a.username === selectedPost.author || a.name === selectedPost.author
+                    ) || { name: selectedPost.author, username: selectedPost.author, avatar: selectedPost.image };
+                    setSelectedPost(null);
+                    openUserProfile(postAuthor);
+                  }}
+                  className="flex items-center gap-2.5 pb-2.5 border-b border-slate-100 text-left group cursor-pointer w-full"
+                  title="Click to view full user profile"
+                >
+                  <Avatar 
+                    src={selectedPost.authorData?.avatar || selectedPost.image} 
+                    name={selectedPost.author} 
+                    size="sm"
+                    className="border group-hover:border-[#7256c3] transition-colors"
+                  />
+                  <div>
+                    <span className="font-bold text-xs text-slate-900 group-hover:text-[#7256c3] transition-colors block">
+                      @{selectedPost.author}
+                    </span>
+                    <span className="text-[10px] text-slate-400">View Member Profile →</span>
+                  </div>
+                </button>
+
+                <h4 className="font-bold text-sm text-slate-900 font-heading leading-snug">{selectedPost.title}</h4>
                 <div className="flex items-center gap-3 text-xs text-slate-600">
-                  <span className="flex items-center gap-1"><Heart className="w-4 h-4 text-rose-500 fill-rose-500" /> {selectedPost.likes}</span>
-                  <span className="flex items-center gap-1"><MessageCircle className="w-4 h-4 text-slate-400" /> {selectedPost.comments}</span>
+                  <span className="flex items-center gap-1 font-semibold"><Heart className="w-4 h-4 text-rose-500 fill-rose-500" /> {selectedPost.likes}</span>
+                  <span className="flex items-center gap-1 font-semibold"><MessageCircle className="w-4 h-4 text-slate-400" /> {selectedPost.comments}</span>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedPost(null)}
-                className="w-full py-2.5 rounded-xl bg-[#7256c3] text-white font-bold text-xs cursor-pointer shadow-xs"
-              >
-                Close View
-              </button>
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const postAuthor = selectedPost.authorData || accounts.find(
+                      (a) => a.username === selectedPost.author || a.name === selectedPost.author
+                    ) || { name: selectedPost.author, username: selectedPost.author, avatar: selectedPost.image };
+                    setSelectedPost(null);
+                    openUserProfile(postAuthor);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-[#7256c3] hover:bg-[#6044b3] text-white font-bold text-xs cursor-pointer shadow-xs transition-colors flex items-center justify-center gap-2"
+                >
+                  <User className="w-4 h-4" /> View Creator Profile
+                </button>
+                <button
+                  onClick={() => setSelectedPost(null)}
+                  className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs cursor-pointer transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

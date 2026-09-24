@@ -33,10 +33,13 @@ import {
   Users
 } from 'lucide-react';
 
+import { useProfileModal } from '../../context/ProfileModalContext';
+
 export function DashboardView({ setActiveTab }) {
   const { user, accounts = [] } = useAuth();
   const { addToCart, watchlist = [], toggleWatchlist, setIsCartOpen, cart = [] } = useShop();
   const { addToast } = useToast();
+  const { openUserProfile } = useProfileModal();
 
   // Dynamic user posts loaded from storage
   const [feed, setFeed] = useState(() => {
@@ -266,16 +269,26 @@ export function DashboardView({ setActiveTab }) {
                 >
                   {/* Post Header */}
                   <div className="p-4 flex items-center justify-between border-b border-slate-100">
-                    <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const authorObj = accounts.find(
+                          (a) => a.id === post.author?.id || a.username === post.author?.username || a.name === post.author?.name
+                        ) || post.author || { name: post.author?.name || 'User', username: post.author?.username || 'user', avatar: post.author?.avatar };
+                        openUserProfile(authorObj);
+                      }}
+                      className="flex items-center gap-3 text-left group cursor-pointer"
+                      title="Click to view profile"
+                    >
                       <Avatar 
                         src={post.author?.avatar || user?.avatar} 
                         name={post.author?.name || user?.name || 'User'} 
                         size="sm" 
-                        className="border border-slate-200"
+                        className="border border-slate-200 group-hover:border-[#7256c3] transition-colors"
                       />
                       <div className="leading-tight">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs text-slate-900 font-heading">
+                          <span className="font-bold text-xs text-slate-900 font-heading group-hover:text-[#7256c3] transition-colors">
                             {post.author?.username || user?.username}
                           </span>
                           <span className="w-3.5 h-3.5 rounded-full bg-[#7256c3] text-white text-[9px] flex items-center justify-center font-bold">
@@ -290,7 +303,7 @@ export function DashboardView({ setActiveTab }) {
                           </span>
                         )}
                       </div>
-                    </div>
+                    </button>
 
                     <button 
                       onClick={() => addToast('Post Options', post.title, 'info', 1500)}
@@ -553,19 +566,24 @@ export function DashboardView({ setActiveTab }) {
             </div>
             <div className="space-y-3">
               {genuineCommunityMembers.map((member) => (
-                <div key={member.id} className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5 truncate">
-                    <Avatar src={member.avatar} name={member.name} size="sm" />
-                    <div className="truncate leading-tight">
-                      <p className="font-bold text-slate-900 text-xs truncate">{member.name}</p>
-                      <p className="text-[10px] text-slate-400 truncate">@{member.username}</p>
-                    </div>
-                  </div>
+                <div key={member.id} className="flex items-center justify-between gap-2 p-1 rounded-xl hover:bg-slate-50 transition-colors">
                   <button
-                    onClick={() => setActiveTab('chats')}
-                    className="text-[11px] font-bold text-[#7256c3] hover:text-[#5d42a6] cursor-pointer"
+                    type="button"
+                    onClick={() => openUserProfile(member)}
+                    className="flex items-center gap-2.5 truncate text-left group cursor-pointer flex-1"
+                    title="Click to view full profile"
                   >
-                    Ping
+                    <Avatar src={member.avatar} name={member.name} size="sm" className="border group-hover:border-[#7256c3] transition-colors" />
+                    <div className="truncate leading-tight">
+                      <p className="font-bold text-slate-900 text-xs truncate group-hover:text-[#7256c3] transition-colors">{member.name}</p>
+                      <p className="text-[10px] text-slate-400 truncate font-mono">@{member.username}</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => openUserProfile(member)}
+                    className="text-[11px] font-bold text-[#7256c3] hover:text-[#5d42a6] px-2 py-1 rounded-lg hover:bg-violet-50 transition-colors cursor-pointer"
+                  >
+                    View
                   </button>
                 </div>
               ))}

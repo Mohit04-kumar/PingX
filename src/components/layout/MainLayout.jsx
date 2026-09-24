@@ -22,7 +22,7 @@ export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, onPos
   return (
     <div className="min-h-screen bg-[#f8f7ff] text-slate-900 flex flex-col font-sans relative">
       
-      {/* Sidebar Navigation (Instagram Style) */}
+      {/* Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -32,9 +32,16 @@ export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, onPos
         setIsExpanded={setIsSidebarExpanded}
         onNavigateToLanding={onNavigateToLanding}
         onOpenCreate={() => setIsCreatePostOpen(true)}
-        onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenSearch={() => setCommandPaletteOpen(true)}
       />
+
+      {/* Mobile Sidebar Backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-35 lg:hidden animate-fadeIn"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarExpanded ? 'lg:pl-60' : 'lg:pl-20'}`}>
@@ -48,6 +55,7 @@ export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, onPos
           isSidebarExpanded={isSidebarExpanded}
           onToggleSidebarExpand={() => setIsSidebarExpanded(!isSidebarExpanded)}
           onNavigateToLanding={onNavigateToLanding}
+          onOpenNotifications={() => setIsNotificationsOpen(true)}
         />
 
         {/* Dynamic Page Content */}

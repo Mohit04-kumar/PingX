@@ -5,19 +5,26 @@ import { PingXLogo } from '../common/PingXLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
-export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSuccess }) {
+export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSuccess, initialIdentity = '' }) {
   const { login } = useAuth();
   const { addToast } = useToast();
 
-  const [emailOrUser, setEmailOrUser] = useState('');
+  const [emailOrUser, setEmailOrUser] = useState(initialIdentity || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Google Modal State
+  const [justRegistered, setJustRegistered] = useState(Boolean(initialIdentity));
   const [showGoogleModal, setShowGoogleModal] = useState(false);
+
+  // Sync initialIdentity if passed dynamically
+  React.useEffect(() => {
+    if (initialIdentity) {
+      setEmailOrUser(initialIdentity);
+      setJustRegistered(true);
+    }
+  }, [initialIdentity]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -149,6 +156,13 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
                   Welcome back! Please enter your details below.
                 </p>
               </div>
+
+              {justRegistered && !error && (
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Account registered successfully! Please enter your password to sign in.</span>
+                </div>
+              )}
 
               {error && (
                 <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
@@ -337,11 +351,19 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={() => {
-                  login('raman@pingx.app', '123');
-                  setShowGoogleModal(false);
-                  addToast('Signed in via Google as Raman Raj!', 'success', 2500);
-                  if (onAuthSuccess) onAuthSuccess();
+                onClick={async () => {
+                  try {
+                    try {
+                      await login('raman@pingx.app', 'google_verified_auth');
+                    } catch (e) {
+                      await login('raman@pingx.app', '123');
+                    }
+                    setShowGoogleModal(false);
+                    addToast('Signed in via Google as Raman Raj!', 'success', 2500);
+                    if (onAuthSuccess) onAuthSuccess();
+                  } catch (err) {
+                    addToast(err.message || 'Google account not registered yet. Please create account first.', 'error');
+                  }
                 }}
                 className="w-full p-3 rounded-2xl border border-slate-200 hover:border-[#7256c3] bg-slate-50 hover:bg-white transition-all flex items-center gap-3 text-left cursor-pointer"
               >
@@ -358,11 +380,19 @@ export function SignInPage({ onNavigateToLanding, onNavigateToRegister, onAuthSu
 
               <button
                 type="button"
-                onClick={() => {
-                  login('mr.mohitkumar004@gmail.com', '123');
-                  setShowGoogleModal(false);
-                  addToast('Signed in via Google as Mohit Kumar!', 'success', 2500);
-                  if (onAuthSuccess) onAuthSuccess();
+                onClick={async () => {
+                  try {
+                    try {
+                      await login('mr.mohitkumar004@gmail.com', 'google_verified_auth');
+                    } catch (e) {
+                      await login('mr.mohitkumar004@gmail.com', '123');
+                    }
+                    setShowGoogleModal(false);
+                    addToast('Signed in via Google as Mohit Kumar!', 'success', 2500);
+                    if (onAuthSuccess) onAuthSuccess();
+                  } catch (err) {
+                    addToast(err.message || 'Google account not registered yet. Please create account first.', 'error');
+                  }
                 }}
                 className="w-full p-3 rounded-2xl border border-slate-200 hover:border-[#7256c3] bg-slate-50 hover:bg-white transition-all flex items-center gap-3 text-left cursor-pointer"
               >

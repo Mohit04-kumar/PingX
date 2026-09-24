@@ -16,6 +16,7 @@ import {
   Send
 } from 'lucide-react';
 import { Avatar } from '../common/Avatar';
+import { useProfileModal } from '../../context/ProfileModalContext';
 
 export function ConnectView({ setActiveTab }) {
   const { 
@@ -26,9 +27,9 @@ export function ConnectView({ setActiveTab }) {
     searchUsers 
   } = useAuth();
   const { startDirectChat } = useChat();
+  const { openUserProfile } = useProfileModal();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedUser, setSelectedUser] = useState(null);
   const [actionNotice, setActionNotice] = useState('');
 
   const filteredUsers = searchUsers(searchQuery).filter(u => u.id !== user?.id);
@@ -118,16 +119,20 @@ export function ConnectView({ setActiveTab }) {
               >
                 <div className="space-y-4">
                   {/* Top info */}
-                  <div className="flex items-center gap-4">
+                  <div 
+                    onClick={() => openUserProfile(member)}
+                    className="flex items-center gap-4 cursor-pointer group"
+                    title="Click to view member profile"
+                  >
                     <Avatar
                       src={member.avatar}
                       name={member.name}
                       size="lg"
-                      className="border-2 shadow-sm"
+                      className="border-2 shadow-sm group-hover:scale-105 transition-transform"
                       style={{ borderColor: 'var(--accent)' }}
                     />
                     <div className="overflow-hidden">
-                      <h4 className="text-base font-bold font-heading truncate" style={{ color: 'var(--text-primary)' }}>
+                      <h4 className="text-base font-bold font-heading truncate group-hover:text-[#7256c3] transition-colors" style={{ color: 'var(--text-primary)' }}>
                         {member.name}
                       </h4>
                       <p className="text-xs font-mono font-semibold" style={{ color: 'var(--accent)' }}>
@@ -172,7 +177,7 @@ export function ConnectView({ setActiveTab }) {
                     )}
 
                     <button
-                      onClick={() => setSelectedUser(member)}
+                      onClick={() => openUserProfile(member)}
                       className="px-3.5 py-2.5 rounded-xl text-xs font-bold border hover:bg-slate-100 transition-colors cursor-pointer"
                       style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
                       title="View Member Profile & Gallery"
@@ -186,94 +191,6 @@ export function ConnectView({ setActiveTab }) {
           })
         )}
       </div>
-
-      {/* Profile & Gallery Modal */}
-      {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
-          <div 
-            className="w-full max-w-lg rounded-3xl p-6 sm:p-8 border shadow-2xl relative space-y-6 max-h-[90vh] overflow-y-auto"
-            style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
-          >
-            <button
-              onClick={() => setSelectedUser(null)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full border flex items-center justify-center text-gray-500 hover:text-black cursor-pointer"
-              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-subtle)' }}
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* Profile Overview */}
-            <div className="flex items-center gap-5">
-              <Avatar
-                src={selectedUser.avatar}
-                name={selectedUser.name}
-                size="xl"
-                className="border-2 shadow-md"
-                style={{ borderColor: 'var(--accent)' }}
-              />
-              <div className="space-y-1">
-                <h3 className="text-xl font-extrabold font-heading" style={{ color: 'var(--text-primary)' }}>
-                  {selectedUser.name}
-                </h3>
-                <p className="text-xs font-mono font-bold" style={{ color: 'var(--accent)' }}>
-                  @{selectedUser.username}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {selectedUser.role || 'Member'} • {selectedUser.location || 'Not set'}
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
-              <span className="text-[10px] uppercase font-mono font-bold block mb-1" style={{ color: 'var(--text-muted)' }}>About / Bio</span>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                {selectedUser.bio || 'No bio provided yet.'}
-              </p>
-            </div>
-
-            {/* Member Gallery Preview */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
-                <ImageIcon className="w-4 h-4" style={{ color: 'var(--accent)' }} /> Posted Media &amp; Photos
-              </h4>
-              {selectedUser.gallery && selectedUser.gallery.length > 0 ? (
-                <div className="grid grid-cols-3 gap-3">
-                  {selectedUser.gallery.map((item, idx) => (
-                    <img
-                      key={idx}
-                      src={typeof item === 'string' ? item : item.mediaUrl}
-                      alt="gallery"
-                      className="w-full h-24 rounded-xl object-cover border"
-                      style={{ borderColor: 'var(--border)' }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="p-6 rounded-2xl border text-center space-y-1.5" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
-                  <ImageIcon className="w-6 h-6 mx-auto opacity-40" style={{ color: 'var(--accent)' }} />
-                  <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>No media posted yet</p>
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>This member hasn't uploaded any photos or videos to their gallery.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => {
-                  handleOpenChat(selectedUser);
-                  setSelectedUser(null);
-                }}
-                className="flex-1 btn-primary py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-md"
-              >
-                <Send className="w-4 h-4" /> Send Message
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

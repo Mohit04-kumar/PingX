@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { X, UserPlus, User, Search, Check, ShieldCheck, MessageCircle, Send, AtSign, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useProfileModal } from '../../context/ProfileModalContext';
 
 export function AddContactModal({ isOpen, onClose, onSave }) {
   const { user, searchUsers, sendFriendRequest, friendRequests, respondToFriendRequest, accounts } = useAuth();
   const { addToast } = useToast();
+  const { openUserProfile } = useProfileModal();
   const [activeTab, setActiveTab] = useState('search'); // 'search' or 'requests'
   const [searchHandle, setSearchHandle] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
@@ -181,13 +183,21 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
                       key={u.id}
                       className="bg-white p-3 rounded-2xl border border-[#e6e2f8] hover:border-violet-200 transition-colors flex items-center justify-between shadow-2xs"
                     >
-                      <div className="flex items-center gap-3">
-                        <img src={u.avatar} alt={u.name} className="w-9 h-9 rounded-full object-cover border border-[#e6e2f8]" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          openUserProfile(u);
+                        }}
+                        className="flex items-center gap-3 text-left group cursor-pointer"
+                        title="Click to view full profile"
+                      >
+                        <img src={u.avatar} alt={u.name} className="w-9 h-9 rounded-full object-cover border border-[#e6e2f8] group-hover:border-[#7256c3] transition-colors" />
                         <div>
-                          <p className="text-xs font-bold text-slate-900 leading-tight">{u.name}</p>
+                          <p className="text-xs font-bold text-slate-900 leading-tight group-hover:text-[#7256c3] transition-colors">{u.name}</p>
                           <p className="text-[10px] text-[#7256c3] font-mono">@{u.username}</p>
                         </div>
-                      </div>
+                      </button>
 
                       {isAccepted ? (
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl">
@@ -231,13 +241,21 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
                       key={req.id}
                       className="bg-white p-3 rounded-2xl border border-[#e6e2f8] flex items-center justify-between shadow-2xs"
                     >
-                      <div className="flex items-center gap-3">
-                        <img src={sender.avatar} alt={sender.name} className="w-9 h-9 rounded-full object-cover border border-[#e6e2f8]" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          openUserProfile(sender);
+                        }}
+                        className="flex items-center gap-3 text-left group cursor-pointer"
+                        title="Click to view full profile"
+                      >
+                        <img src={sender.avatar} alt={sender.name} className="w-9 h-9 rounded-full object-cover border border-[#e6e2f8] group-hover:border-[#7256c3] transition-colors" />
                         <div>
-                          <p className="text-xs font-bold text-slate-900">{sender.name}</p>
-                          <p className="text-[10px] text-[#7256c3]">@{sender.username}</p>
+                          <p className="text-xs font-bold text-slate-900 group-hover:text-[#7256c3] transition-colors">{sender.name}</p>
+                          <p className="text-[10px] text-[#7256c3] font-mono">@{sender.username}</p>
                         </div>
-                      </div>
+                      </button>
 
                       <div className="flex items-center gap-1.5">
                         <button

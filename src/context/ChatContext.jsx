@@ -133,9 +133,12 @@ export function ChatProvider({ children, onAddPing }) {
         prev.map((chat) => {
           if (chat.id !== message.roomId) return chat;
           if (chat.messages?.some((m) => m.id === message.id)) return chat;
+          const isCurrentActive = activeChatId === message.roomId;
+          const isIncoming = message.senderId !== user?.id;
           return {
             ...chat,
             messages: [...(chat.messages || []), message],
+            unreadCount: isCurrentActive ? 0 : ((chat.unreadCount || 0) + (isIncoming ? 1 : 0)),
             lastMessage: { content: message.content, timestamp: message.timestamp, senderId: message.senderId }
           };
         })
@@ -487,9 +490,20 @@ export function ChatProvider({ children, onAddPing }) {
     accounts
   };
 
+  const totalUnreadCount = (chats || []).reduce((total, chat) => {
+    if (typeof chat.unreadCount === 'number' && chat.unreadCount > 0) {
+      return total + chat.unreadCount;
+    }
+    const unreadMsgs = (chat.messages || []).filter(
+      (m) => m.senderId !== user?.id && m.status !== 'read'
+    ).length;
+    return total + unreadMsgs;
+  }, 0);
+
   return (
     <ChatContext.Provider value={{
       chats,
+      totalUnreadCount,
       activeChat,
       activeChatId,
       setActiveChatId,
