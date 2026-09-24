@@ -3,7 +3,6 @@ import { Sidebar } from './Sidebar';
 import { TopHeader } from './TopHeader';
 import { CommandPalette } from './CommandPalette';
 import { CreatePostModal } from '../common/CreatePostModal';
-import { NotificationsDrawer } from '../common/NotificationsDrawer';
 
 export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, onPostCreated, children }) {
   // Mobile drawer toggle
@@ -13,7 +12,6 @@ export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, onPos
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const handleCommandNavigate = (tab, itemId) => {
     setActiveTab(tab);
@@ -55,7 +53,6 @@ export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, onPos
           isSidebarExpanded={isSidebarExpanded}
           onToggleSidebarExpand={() => setIsSidebarExpanded(!isSidebarExpanded)}
           onNavigateToLanding={onNavigateToLanding}
-          onOpenNotifications={() => setIsNotificationsOpen(true)}
         />
 
         {/* Dynamic Page Content */}
@@ -79,12 +76,6 @@ export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, onPos
         onPostCreated={(newPost) => {
           if (onPostCreated) onPostCreated(newPost);
         }}
-      />
-
-      {/* Instagram Notifications Slide-Out Drawer (Heart in Sidebar) */}
-      <NotificationsDrawer
-        isOpen={isNotificationsOpen}
-        onClose={() => setIsNotificationsOpen(false)}
       />
 
     </div>

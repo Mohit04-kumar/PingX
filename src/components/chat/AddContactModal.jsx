@@ -54,7 +54,9 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
         if (res && res.success) {
           setActionSuccess(`Accepted request from ${sender?.name || 'User'}! Chat unlocked.`);
           addToast('Request Accepted', `You are now friends with ${sender?.name || 'User'}`, 'success', 3500);
-          if (res.chat && typeof onSave === 'function') {
+          if (res.chat) {
+            window.dispatchEvent(new CustomEvent('pingx:openServerChat', { detail: res.chat }));
+          } else if (sender && onSave) {
             onSave({
               name: sender.name,
               username: sender.username,
@@ -63,19 +65,7 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
               avatar: sender.avatar,
               bio: sender.bio
             });
-            window.dispatchEvent(new CustomEvent('pingx:openServerChat', { detail: res.chat }));
-          } else {
-            if (sender && onSave) {
-              onSave({
-                name: sender.name,
-                username: sender.username,
-                email: sender.email,
-                phone: sender.phone,
-                avatar: sender.avatar,
-                bio: sender.bio
-              });
-              addToast('Chat Ready', `Chat with ${sender?.name || 'User'} opened`, 'success', 3000);
-            }
+            addToast('Chat Ready', `Chat with ${sender?.name || 'User'} opened`, 'success', 3000);
           }
         } else {
           setErrorNotice(res.error || 'Failed to accept request');

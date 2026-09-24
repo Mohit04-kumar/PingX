@@ -201,7 +201,7 @@ function AppContent() {
       )}
 
       {/* Smart Assistant Launcher & Popup with Outside-Click Auto-Close */}
-      <FloatingAIBubble />
+      <FloatingAIBubble activeTab={currentView === 'app' ? activeTab : null} />
       <AIPopupPanel />
       <ToastContainer />
       <CartDrawer />

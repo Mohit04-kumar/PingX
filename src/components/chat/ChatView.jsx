@@ -136,7 +136,7 @@ export function ChatView() {
   }, [startDirectChat]);
 
   const handleSend = (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!inputContent.trim()) return;
     sendMessage(inputContent);
     setInputContent('');
@@ -817,6 +817,12 @@ export function ChatView() {
               type="text"
               value={inputContent}
               onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend(e);
+                }
+              }}
               placeholder={`Message ${activeChat?.user?.name || activeChat?.group?.name || 'member'}...`}
               className="w-full bg-transparent text-xs outline-none"
               style={{ color: 'var(--text-primary)' }}
@@ -850,7 +856,7 @@ export function ChatView() {
           <button 
             type="submit" 
             disabled={!inputContent.trim()} 
-            className="w-11 h-11 rounded-2xl flex items-center justify-center text-white cursor-pointer shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="w-11 h-11 rounded-2xl flex items-center justify-center text-white cursor-pointer shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all relative z-20 shrink-0"
             style={{ backgroundColor: 'var(--accent)' }}
             title={inputContent.trim() ? 'Send' : 'Type a message'}
           >

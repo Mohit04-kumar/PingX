@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
 import { useShop } from '../../context/ShopContext';
+import { PRODUCT_DATABASE } from '../../services/productComparisonService';
 import { Avatar } from '../common/Avatar';
 import { CreateHighlightModal } from '../common/CreateHighlightModal';
 import { CreatePostModal } from '../common/CreatePostModal';
@@ -35,7 +36,21 @@ import {
 export function ProfileView() {
   const { user, updateProfile, updateAvatar } = useAuth();
   const { chats } = useChat();
-  const { watchlist, cart, removeFromWatchlist, addToCart } = useShop();
+  const { watchlist = [], cart = [], removeFromWatchlist, clearWatchlist, addToCart } = useShop();
+
+  // Resolve watchlist string IDs or objects to full products with fallback
+  const resolvedWatchlist = (watchlist || [])
+    .map((item) => {
+      if (typeof item === 'object' && item !== null && (item.title || item.name)) {
+        return item;
+      }
+      const id = typeof item === 'string' ? item : item?.id || item?.productId;
+      const found = PRODUCT_DATABASE.find((p) => p.id === id);
+      if (found) return found;
+      if (typeof item === 'object' && item !== null && item.id) return item;
+      return null;
+    })
+    .filter(Boolean);
 
   const [activeTab, setActiveTab] = useState('posts'); // 'posts' | 'saved' | 'cart' | 'tagged'
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -267,7 +282,7 @@ export function ProfileView() {
                 <span className="text-slate-500 text-xs sm:text-sm">highlights</span>
               </div>
               <div>
-                <span className="font-extrabold text-[#7256c3]">{watchlist.length}</span>{' '}
+                <span className="font-extrabold text-[#7256c3]">{resolvedWatchlist.length}</span>{' '}
                 <span className="text-slate-500 text-xs sm:text-sm">tracked deals</span>
               </div>
             </div>
@@ -395,7 +410,7 @@ export function ProfileView() {
               : 'border-transparent text-slate-400 hover:text-slate-600'
           }`}
         >
-          <Bookmark className="w-3.5 h-3.5" /> SAVED DEALS ({watchlist.length})
+          <Bookmark className="w-3.5 h-3.5" /> SAVED DEALS ({resolvedWatchlist.length})
         </button>
 
         <button
@@ -472,32 +487,53 @@ export function ProfileView() {
 
       {/* Tab Content 2: SAVED DEALS */}
       {activeTab === 'saved' && (
-        <div>
-          {watchlist.length === 0 ? (
+        <div className="space-y-4">
+          {resolvedWatchlist.length === 0 ? (
             <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
               <Bookmark className="w-8 h-8 text-slate-400 mx-auto" />
               <h4 className="font-bold text-slate-900 text-sm">No saved deals yet</h4>
               <p className="text-xs text-slate-500">Save products and posts to monitor verified price changes.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {watchlist.map((item) => (
-                <div key={item.id} className="p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between gap-3 shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <img src={item.image} alt={item.title} className="w-12 h-12 rounded-xl object-cover" />
-                    <div>
-                      <h5 className="font-bold text-xs text-slate-900 line-clamp-1">{item.title}</h5>
-                      <span className="text-xs font-black text-[#7256c3]">₹{item.price?.toLocaleString()}</span>
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <button
+                  onClick={clearWatchlist}
+                  className="text-xs font-semibold text-slate-400 hover:text-rose-600 cursor-pointer transition-colors"
+                >
+                  Clear All
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {resolvedWatchlist.map((item) => {
+                  const itemId = item.id || item.productId;
+                  return (
+                    <div key={itemId} className="p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between gap-3 shadow-xs hover:border-violet-200 transition-all">
+                      <div className="flex items-center gap-3 truncate">
+                        <img 
+                          src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&auto=format&fit=crop&q=80'} 
+                          alt={item.title || 'Product'} 
+                          className="w-14 h-14 rounded-xl object-cover border border-slate-100 shrink-0" 
+                        />
+                        <div className="truncate">
+                          <h5 className="font-bold text-xs text-slate-900 truncate">{item.title || 'Saved Product'}</h5>
+                          <span className="text-xs font-black text-[#7256c3] block mt-0.5">₹{(item.price || item.bestPrice || 0).toLocaleString('en-IN')}</span>
+                          {item.merchant && (
+                            <span className="text-[10px] text-slate-400 block">{item.merchant}</span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeFromWatchlist(itemId || item)}
+                        className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+                        title="Remove from saved deals"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => removeFromWatchlist(item.id)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-50 cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

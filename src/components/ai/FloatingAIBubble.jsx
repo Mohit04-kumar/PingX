@@ -3,7 +3,7 @@ import { useAI } from '../../context/AIContext';
 import { NeuralAIIcon } from '../common/NeuralAIIcon';
 import { X } from 'lucide-react';
 
-export function FloatingAIBubble() {
+export function FloatingAIBubble({ activeTab }) {
   const { 
     isAIPopupOpen, 
     setIsAIPopupOpen, 
@@ -13,7 +13,7 @@ export function FloatingAIBubble() {
 
   const [position, setPosition] = useState(() => {
     const saved = localStorage.getItem('pingx_ai_pos');
-    return saved ? JSON.parse(saved) : { x: window.innerWidth - 80, y: window.innerHeight - 80 };
+    return saved ? JSON.parse(saved) : { x: window.innerWidth - 80, y: Math.max(80, window.innerHeight - 150) };
   });
 
   const [isDragging, setIsDragging] = useState(false);
@@ -70,7 +70,7 @@ export function FloatingAIBubble() {
     }
   };
 
-  if (isAIPopupOpen) return null;
+  if (isAIPopupOpen || activeTab === 'chats') return null;
 
   return (
     <div

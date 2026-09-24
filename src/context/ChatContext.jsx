@@ -19,6 +19,54 @@ import { io as socketIOClient } from 'socket.io-client';
 
 const storageKey = 'pingx_chats';
 
+function dedupeAndMergeChats(rawChats, currentUserId) {
+  if (!Array.isArray(rawChats)) return [];
+  const mergedMap = new Map();
+
+  for (const chat of rawChats) {
+    if (!chat) continue;
+    let partnerKey = null;
+    if (chat.type === 'group' || chat.isGroup) {
+      partnerKey = `group_${chat.id}`;
+    } else {
+      const partnerId = chat.user?.id || (chat.participants || []).find((p) => p !== currentUserId);
+      const partnerUsername = chat.user?.username ? chat.user.username.toLowerCase().trim() : null;
+      const partnerName = chat.user?.name ? chat.user.name.toLowerCase().trim() : null;
+      partnerKey = partnerUsername || partnerName || partnerId || chat.id;
+    }
+
+    if (!mergedMap.has(partnerKey)) {
+      mergedMap.set(partnerKey, { ...chat });
+    } else {
+      const existing = mergedMap.get(partnerKey);
+      const existingMsgIds = new Set((existing.messages || []).map((m) => m.id));
+      const existingContents = new Set((existing.messages || []).map((m) => `${m.content}_${m.timestamp}`));
+      const combinedMsgs = [...(existing.messages || [])];
+
+      for (const msg of (chat.messages || [])) {
+        const signature = `${msg.content}_${msg.timestamp}`;
+        if (!existingMsgIds.has(msg.id) && !existingContents.has(signature)) {
+          combinedMsgs.push(msg);
+          existingMsgIds.add(msg.id);
+          existingContents.add(signature);
+        }
+      }
+
+      const bestUser = (existing.user?.username && existing.user?.avatar) ? existing.user : (chat.user || existing.user);
+      const bestLastMessage = combinedMsgs.length > 0 ? combinedMsgs[combinedMsgs.length - 1] : (existing.lastMessage || chat.lastMessage);
+
+      mergedMap.set(partnerKey, {
+        ...existing,
+        id: existing.id || chat.id,
+        user: bestUser,
+        messages: combinedMsgs,
+        lastMessage: bestLastMessage
+      });
+    }
+  }
+  return Array.from(mergedMap.values());
+}
+
 export function ChatProvider({ children, onAddPing }) {
   const { user, accounts, searchUsers, sendFriendRequest, respondToFriendRequest, getIncomingRequests, getOutgoingRequests } = useAuth();
 
@@ -28,13 +76,12 @@ export function ChatProvider({ children, onAddPing }) {
       const saved = window.localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Clear mock chats if present
         const hasOnlyMock = Array.isArray(parsed) && parsed.every((c) => ['chat_1', 'chat_2', 'chat_3'].includes(c.id));
         if (hasOnlyMock) {
           window.localStorage.removeItem(storageKey);
           return [];
         }
-        return parsed;
+        return dedupeAndMergeChats(parsed, user?.id);
       }
       return [];
     } catch {
@@ -77,12 +124,22 @@ export function ChatProvider({ children, onAddPing }) {
           setChats((prev) => {
             const map = new Map(prev.map((c) => [c.id, c]));
             remoteChats.forEach((rc) => map.set(rc.id, { ...map.get(rc.id), ...rc }));
-            return Array.from(map.values());
+            return dedupeAndMergeChats(Array.from(map.values()), user?.id);
           });
         }
       })
       .catch(() => {});
-  }, []);
+  }, [user]);
+
+  // Ensure activeChatId always points to a valid conversation if chats exist
+  useEffect(() => {
+    if (chats.length > 0) {
+      const exists = chats.some((c) => c.id === activeChatId);
+      if (!exists || !activeChatId) {
+        setActiveChatIdState(chats[0].id);
+      }
+    }
+  }, [chats, activeChatId]);
 
   // When active chat changes, fetch full message history from server
   useEffect(() => {
@@ -205,7 +262,6 @@ export function ChatProvider({ children, onAddPing }) {
       const serverChat = e?.detail;
       if (!serverChat || !serverChat.id) return;
       setChats((prev) => {
-        if (prev.find((c) => c.id === serverChat.id)) return prev;
         const users = (serverChat.participants || []).map((pid) => {
           const acc = accounts.find((a) => a.id === pid);
           return acc || { id: pid, name: pid, username: pid, avatar: '' };
@@ -220,9 +276,13 @@ export function ChatProvider({ children, onAddPing }) {
           pinned: false,
           lastMessage: serverChat.messages && serverChat.messages.length > 0 ? serverChat.messages[serverChat.messages.length - 1] : null
         };
-        return [newChat, ...prev];
+        const merged = dedupeAndMergeChats([newChat, ...prev], user?.id);
+        const resolvedChat = merged.find((c) => c.id === serverChat.id || (newChat.user?.username && c.user?.username === newChat.user?.username));
+        if (resolvedChat) {
+          setActiveChatIdState(resolvedChat.id);
+        }
+        return merged;
       });
-      setActiveChatIdState(serverChat.id);
     };
     window.addEventListener('pingx:openServerChat', handler);
     return () => window.removeEventListener('pingx:openServerChat', handler);
@@ -267,6 +327,26 @@ export function ChatProvider({ children, onAddPing }) {
   };
 
   const addContact = ({ name, phone, email, avatar, username, bio }) => {
+    const cleanName = String(name || 'New Contact').trim();
+    const cleanUsername = username ? String(username).trim().toLowerCase() : cleanName.toLowerCase().replace(/\s+/g, '');
+
+    // Check if chat already exists for this person (by username, name, phone, or email)
+    const existingChat = chats.find((c) => {
+      if (!c) return false;
+      const partner = c.user;
+      if (!partner) return false;
+      if (partner.username && partner.username.toLowerCase() === cleanUsername) return true;
+      if (partner.name && partner.name.toLowerCase() === cleanName.toLowerCase()) return true;
+      if (email && partner.email && partner.email.toLowerCase() === email.toLowerCase()) return true;
+      if (phone && partner.phone && partner.phone.replace(/\s+/g, '') === phone.replace(/\s+/g, '')) return true;
+      return false;
+    });
+
+    if (existingChat) {
+      setActiveChatIdState(existingChat.id);
+      return existingChat;
+    }
+
     const contactId = generateId('user');
     const newChatId = generateId('chat');
     const avatarUrl = avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80';
@@ -276,8 +356,8 @@ export function ChatProvider({ children, onAddPing }) {
       type: 'direct',
       user: {
         id: contactId,
-        name: String(name || 'New Contact').trim(),
-        username: username || String(name || 'newcontact').trim().toLowerCase().replace(/\s+/g, ''),
+        name: cleanName,
+        username: cleanUsername,
         avatar: avatarUrl,
         status: 'online',
         phone: phone || '',
@@ -295,22 +375,27 @@ export function ChatProvider({ children, onAddPing }) {
         {
           id: generateId('m_init'),
           senderId: contactId,
-          senderName: String(name || 'New Contact').trim(),
-          content: `Hey! I'm ${String(name || 'New Contact').trim()}. Glad to connect on PingX! 😊`,
+          senderName: cleanName,
+          content: `Hey! I'm ${cleanName}. Glad to connect on PingX! 😊`,
           timestamp: formatTimestamp(),
           status: 'read'
         }
       ]
     };
 
-    setChats((prev) => [newChat, ...prev]);
+    setChats((prev) => dedupeAndMergeChats([newChat, ...prev], user?.id));
     setActiveChatIdState(newChatId);
     return newChat;
   };
 
   const sendMessage = (content, attachments = [], options = {}) => {
-    if (!activeChatId) return;
+    const currentChatId = activeChatId || activeChat?.id || (chats.length > 0 ? chats[0]?.id : null);
+    if (!currentChatId) return;
     if (!content?.trim() && attachments.length === 0) return;
+
+    if (!activeChatId) {
+      setActiveChatIdState(currentChatId);
+    }
 
     const trimmedContent = String(content || '').trim();
     const newMessage = {
@@ -325,9 +410,9 @@ export function ChatProvider({ children, onAddPing }) {
       reactions: {}
     };
 
-    setChats((prevChats) =>
-      prevChats.map((chat) => {
-        if (chat.id !== activeChatId) return chat;
+    setChats((prevChats) => {
+      const updated = prevChats.map((chat) => {
+        if (chat.id !== currentChatId) return chat;
         return {
           ...chat,
           messages: [...(chat.messages || []), newMessage],
@@ -337,22 +422,25 @@ export function ChatProvider({ children, onAddPing }) {
             senderId: user?.id || 'user_me'
           }
         };
-      })
-    );
+      });
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     // Message saved locally and emitted live via Socket.IO
-    // also emit message over socket for real-time delivery
     try {
       const socket = socketRef.current;
-      if (socket && activeChatId) {
-        const payload = { room: activeChatId, message: { ...newMessage, roomId: activeChatId } };
+      if (socket && currentChatId) {
+        const payload = { room: currentChatId, message: { ...newMessage, roomId: currentChatId } };
         socket.emit('send_message', payload);
         // persist to server
         const t = tokenFromStorage();
-        fetch(`${API_BASE}/api/chats/${encodeURIComponent(activeChatId)}/messages`, {
+        fetch(`${API_BASE}/api/chats/${encodeURIComponent(currentChatId)}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
-          body: JSON.stringify({ message: { ...newMessage, roomId: activeChatId } })
+          body: JSON.stringify({ message: { ...newMessage, roomId: currentChatId } })
         }).catch(() => {});
       }
     } catch {}
@@ -430,11 +518,13 @@ export function ChatProvider({ children, onAddPing }) {
   const startDirectChat = (targetUser) => {
     if (!targetUser) return null;
     const currentUserId = user?.id || 'me';
+    const targetUsername = (targetUser.username || targetUser.name || '').toLowerCase().trim();
 
     // Check if chat already exists
     const existing = chats.find(
       (c) =>
         (c.type === 'direct' && c.user?.id === targetUser.id) ||
+        (c.type === 'direct' && targetUsername && (c.user?.username?.toLowerCase() === targetUsername || c.user?.name?.toLowerCase() === targetUsername)) ||
         (Array.isArray(c.participants) &&
           c.participants.includes(currentUserId) &&
           c.participants.includes(targetUser.id))
@@ -458,7 +548,7 @@ export function ChatProvider({ children, onAddPing }) {
       lastMessage: null
     };
 
-    setChats((prev) => [newChat, ...prev.filter((c) => c.id !== newChatId)]);
+    setChats((prev) => dedupeAndMergeChats([newChat, ...prev.filter((c) => c.id !== newChatId)], currentUserId));
     setActiveChatId(newChatId);
 
     // Sync with backend API

@@ -9,7 +9,6 @@ export function ShopProvider({ children, onAddPing }) {
   const [sortBy, setSortBy] = useState('match');
   const [comparisonList, setComparisonList] = useState([]);
   const [compareModalOpen, setCompareModalOpen] = useState(false);
-  const [watchlist, setWatchlist] = useState(['prod_sony_xm5']);
   const [activeProductDetail, setActiveProductDetail] = useState(null);
 
   // Shopping Cart State
@@ -105,13 +104,52 @@ export function ShopProvider({ children, onAddPing }) {
     setComparisonList([]);
   };
 
+  const [watchlist, setWatchlist] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pingx_watchlist');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return ['prod_sony_xm5'];
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('pingx_watchlist', JSON.stringify(watchlist));
+    } catch {}
+  }, [watchlist]);
+
+  const removeFromWatchlist = (targetIdOrItem) => {
+    const targetId = typeof targetIdOrItem === 'object' && targetIdOrItem !== null 
+      ? (targetIdOrItem.id || targetIdOrItem.productId) 
+      : targetIdOrItem;
+      
+    setWatchlist((prev) =>
+      prev.filter((item) => {
+        if (!item || !targetId) return false;
+        const id = typeof item === 'object' && item !== null ? (item.id || item.productId) : item;
+        return id !== targetId && item !== targetId;
+      })
+    );
+  };
+
+  const clearWatchlist = () => {
+    setWatchlist([]);
+    try {
+      localStorage.removeItem('pingx_watchlist');
+    } catch {}
+  };
+
   const toggleWatchlist = (product, targetPrice) => {
-    const isWatched = watchlist.includes(product.id);
+    const prodId = typeof product === 'object' ? product.id : product;
+    const isWatched = watchlist.some((item) => {
+      const id = typeof item === 'object' ? item.id : item;
+      return id === prodId;
+    });
     if (isWatched) {
-      setWatchlist((prev) => prev.filter((id) => id !== product.id));
+      removeFromWatchlist(prodId);
     } else {
-      setWatchlist((prev) => [...prev, product.id]);
-      if (onAddPing) {
+      setWatchlist((prev) => [...prev, product]);
+      if (onAddPing && typeof product === 'object') {
         onAddPing({
           id: `watch_${Date.now()}`,
           type: 'price_alert',
@@ -148,6 +186,8 @@ export function ShopProvider({ children, onAddPing }) {
       setCompareModalOpen,
       watchlist,
       toggleWatchlist,
+      removeFromWatchlist,
+      clearWatchlist,
       activeProductDetail,
       setActiveProductDetail,
       cart,
