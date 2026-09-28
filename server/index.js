@@ -54,7 +54,15 @@ const ensureServerlessDb = async () => {
       console.warn('Serverless DB connect warning:', err.message);
     });
   }
-  return serverlessDbPromise;
+  await serverlessDbPromise;
+  const mongoose = require('mongoose');
+  if (mongoose.connection.readyState === 2) {
+    await new Promise((resolve) => {
+      mongoose.connection.once('connected', resolve);
+      setTimeout(resolve, 3500);
+    });
+  }
+  return isDbConnected();
 };
 
 app.use(async (req, res, next) => {
@@ -94,10 +102,17 @@ setInterval(() => {
 // ---------------------------------------------------------------------------
 
 // Health check & DB status
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+  if (!isDbConnected()) {
+    try {
+      await ensureServerlessDb();
+    } catch (e) {}
+  }
   res.json({
     status: 'ok',
     database: isDbConnected() ? 'connected (MongoDB)' : 'in-memory fallback',
+    dbError: connectDB.getLastError ? connectDB.getLastError() : null,
+    readyState: require('mongoose').connection.readyState,
     timestamp: new Date().toISOString()
   });
 });

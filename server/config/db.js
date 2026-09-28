@@ -10,6 +10,8 @@ try {
 
 const DEFAULT_ATLAS_URI = 'mongodb+srv://mrmohitkumar004_db_user:dk50ILaPswZFzDK9@cluster0.hqfkwu6.mongodb.net/pingx?retryWrites=true&w=majority&appName=Cluster0';
 
+let lastError = null;
+
 const connectDB = async () => {
   const uri = process.env.MONGODB_URI || DEFAULT_ATLAS_URI;
   try {
@@ -18,13 +20,17 @@ const connectDB = async () => {
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);
+    lastError = null;
     return conn;
   } catch (error) {
+    lastError = error.message;
     console.warn(`⚠️ MongoDB connection warning: ${error.message}`);
     console.warn(`👉 To connect to MongoDB: Ensure your current IP is whitelisted in MongoDB Atlas Network Access OR run a local MongoDB instance.`);
     return null;
   }
 };
+
+connectDB.getLastError = () => lastError;
 
 mongoose.connection.on('disconnected', () => {
   console.log('ℹ️ MongoDB disconnected');
