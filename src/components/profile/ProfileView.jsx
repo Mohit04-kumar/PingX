@@ -60,25 +60,45 @@ export function ProfileView() {
   const [shareNotice, setShareNotice] = useState(false);
   const [saveNotice, setSaveNotice] = useState(false);
 
-  // Dynamic user highlights
+  // Dynamic user highlights strictly keyed by active account
   const [highlights, setHighlights] = useState(() => {
+    if (!user?.id) return [];
     try {
-      const saved = JSON.parse(localStorage.getItem('pingx_user_highlights') || '[]');
+      const saved = JSON.parse(localStorage.getItem(`pingx_user_highlights_${user.id}`) || '[]');
       return Array.isArray(saved) ? saved : [];
     } catch {
       return [];
     }
   });
 
-  // Dynamic user posts
+  // Dynamic user posts strictly keyed by active account (starts with 0 posts for newly created accounts)
   const [posts, setPosts] = useState(() => {
+    if (!user?.id) return [];
     try {
-      const saved = JSON.parse(localStorage.getItem('pingx_user_posts') || '[]');
+      const saved = JSON.parse(localStorage.getItem(`pingx_user_posts_${user.id}`) || '[]');
       return Array.isArray(saved) ? saved : [];
     } catch {
       return [];
     }
   });
+
+  // Re-sync when user changes
+  useEffect(() => {
+    if (!user?.id) {
+      setPosts([]);
+      setHighlights([]);
+      return;
+    }
+    try {
+      const savedP = JSON.parse(localStorage.getItem(`pingx_user_posts_${user.id}`) || '[]');
+      setPosts(Array.isArray(savedP) ? savedP : []);
+      const savedH = JSON.parse(localStorage.getItem(`pingx_user_highlights_${user.id}`) || '[]');
+      setHighlights(Array.isArray(savedH) ? savedH : []);
+    } catch {
+      setPosts([]);
+      setHighlights([]);
+    }
+  }, [user?.id]);
 
   // Edit form state
   const [name, setName] = useState(user?.name || 'Explorer');
@@ -116,14 +136,23 @@ export function ProfileView() {
   const handleHighlightCreated = (newHl) => {
     const updated = [...highlights, newHl];
     setHighlights(updated);
+    if (user?.id) {
+      try {
+        localStorage.setItem(`pingx_user_highlights_${user.id}`, JSON.stringify(updated));
+      } catch (e) {}
+    }
   };
 
   const handlePostCreated = (newPost) => {
     const updated = [newPost, ...posts];
     setPosts(updated);
-    try {
-      localStorage.setItem('pingx_user_posts', JSON.stringify(updated));
-    } catch (e) {}
+    if (user?.id) {
+      try {
+        localStorage.setItem(`pingx_user_posts_${user.id}`, JSON.stringify(updated));
+        const globalSaved = JSON.parse(localStorage.getItem('pingx_user_posts') || '[]');
+        localStorage.setItem('pingx_user_posts', JSON.stringify([newPost, ...globalSaved]));
+      } catch (e) {}
+    }
   };
 
   const handleSaveProfile = (e) => {

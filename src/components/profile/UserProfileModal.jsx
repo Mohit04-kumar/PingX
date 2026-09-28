@@ -73,26 +73,8 @@ export function UserProfileModal({
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  // Mock public gallery items for profile (if none provided)
-  const userGallery = profileUser.gallery && profileUser.gallery.length > 0 
-    ? profileUser.gallery 
-    : [
-        {
-          id: 'g1',
-          url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80',
-          title: 'Hi-Fi Audio Gear'
-        },
-        {
-          id: 'g2',
-          url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80',
-          title: 'Daily Smartwatch Setup'
-        },
-        {
-          id: 'g3',
-          url: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=600&q=80',
-          title: 'Tech Accessories'
-        }
-      ];
+  // Real gallery items for profile (starts empty for newly created users)
+  const userGallery = Array.isArray(profileUser.gallery) ? profileUser.gallery : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
@@ -261,30 +243,44 @@ export function UserProfileModal({
         {/* Tab Contents (Scrollable) */}
         <div className="flex-1 overflow-y-auto p-5 text-xs">
           {activeTab === 'posts' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-2.5">
-                {userGallery.map((item, idx) => (
-                  <div 
-                    key={item.id || idx}
-                    className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs"
-                  >
-                    <img 
-                      src={item.url || item} 
-                      alt={item.title || 'User Post'} 
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center text-white">
-                      <p className="text-[10px] font-bold line-clamp-2">{item.title || 'View Post'}</p>
+            userGallery.length === 0 ? (
+              <div className="py-12 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-violet-50 text-[#7256c3] flex items-center justify-center mx-auto">
+                  <Grid className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-xs text-slate-800">No posts published yet</p>
+                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                    @{profileUser.username || (profileUser.name || 'user').toLowerCase().replace(/\s+/g, '')} has not posted any updates or showcases yet.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2.5">
+                  {userGallery.map((item, idx) => (
+                    <div 
+                      key={item.id || idx}
+                      className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs"
+                    >
+                      <img 
+                        src={item.url || item} 
+                        alt={item.title || 'User Post'} 
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center text-white">
+                        <p className="text-[10px] font-bold line-clamp-2">{item.title || 'View Post'}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center text-slate-500 space-y-1">
-                <p className="font-bold text-[11px] text-slate-700">PingX Verified Community Postings</p>
-                <p className="text-[10px]">All media and product recommendations shared by {profileUser.name.split(' ')[0]} are end-to-end encrypted.</p>
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center text-slate-500 space-y-1">
+                  <p className="font-bold text-[11px] text-slate-700">PingX Verified Community Postings</p>
+                  <p className="text-[10px]">All media and product recommendations shared by {profileUser.name.split(' ')[0]} are end-to-end encrypted.</p>
+                </div>
               </div>
-            </div>
+            )
           )}
 
           {activeTab === 'about' && (

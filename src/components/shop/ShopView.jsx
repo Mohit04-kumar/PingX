@@ -36,12 +36,12 @@ export function ShopView() {
 
   const categories = [
     'All', 
-    'Phone Covers & Cases', 
-    'Footwear', 
-    'Headphones & Audio', 
     'Smartphones', 
     'Laptops', 
+    'Headphones & Audio', 
     'Wearables', 
+    'Footwear', 
+    'Phone Covers & Cases', 
     'Fashion'
   ];
 
@@ -241,6 +241,26 @@ export function ShopView() {
           </button>
         </div>
       )}
+
+      {/* Search & Category Results Header */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-extrabold font-heading" style={{ color: 'var(--text-primary)' }}>
+            {searchQuery ? `Search Results for "${searchQuery}"` : (selectedCategory === 'All' ? 'All Verified Products' : selectedCategory)}
+          </h3>
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-violet-100 text-[#7256c3]">
+            {filteredProducts.length} options
+          </span>
+        </div>
+        {searchQuery && (
+          <button 
+            onClick={() => setSearchQuery('')}
+            className="text-xs font-bold text-[#7256c3] hover:underline cursor-pointer"
+          >
+            Clear Search ✕
+          </button>
+        )}
+      </div>
 
       {/* Product Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

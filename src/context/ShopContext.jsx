@@ -11,21 +11,23 @@ export function ShopProvider({ children, onAddPing }) {
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [activeProductDetail, setActiveProductDetail] = useState(null);
 
-  // Shopping Cart State
-  const [cart, setCart] = useState([
-    {
-      id: 'cart-1',
-      productId: 'prod_sony_xm5',
-      title: 'Sony WH-1000XM5 Wireless ANC Headphones',
-      price: 26990,
-      originalPrice: 28990,
-      merchant: 'Amazon.in',
-      url: 'https://www.amazon.in',
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80',
-      quantity: 1
+  // Shopping Cart State (starts empty for clean user experience)
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('pingx_user_cart') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
     }
-  ]);
+  });
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Sync cart to localStorage
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('pingx_user_cart', JSON.stringify(cart));
+    } catch {}
+  }, [cart]);
 
   // Dynamic Multi-Merchant Search & Price Matrix
   const filteredProducts = searchAndCompareProducts({

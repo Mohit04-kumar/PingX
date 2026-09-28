@@ -126,25 +126,8 @@ export function ExploreView() {
       }
     } catch {}
 
-    // Posts for real registered accounts
-    const accountPosts = accounts
-      .filter((a) => a.id !== user?.id && a.avatar)
-      .slice(0, 3)
-      .map((a, idx) => ({
-        id: `account_post_${a.id}`,
-        type: idx % 2 === 0 ? 'image' : 'video',
-        image: a.avatar,
-        title: a.bio || `${a.name}'s verified showcase`,
-        author: a.username || a.name,
-        authorData: a,
-        likes: `${12 + idx * 8}`,
-        comments: `${2 + idx * 3}`,
-        isReel: idx % 2 !== 0,
-        aspect: 'square'
-      }));
-
-    return [...userPosts, ...accountPosts, ...EXPLORE_POSTS];
-  }, [accounts, user]);
+    return [...userPosts, ...EXPLORE_POSTS];
+  }, [user]);
 
   const filtered = allPosts.filter((p) => {
     if (!search.trim()) return true;

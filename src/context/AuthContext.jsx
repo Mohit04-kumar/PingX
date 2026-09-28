@@ -360,6 +360,15 @@ export function AuthProvider({ children }) {
       joinedDate: new Date().getFullYear().toString()
     };
 
+    // Ensure newly created account has 0 posts and a clean slate
+    try {
+      localStorage.removeItem('pingx_user_posts');
+      localStorage.removeItem('pingx_user_stories');
+      localStorage.removeItem('pingx_user_highlights');
+      localStorage.removeItem(`pingx_user_posts_${newUser.id}`);
+      localStorage.removeItem(`pingx_user_highlights_${newUser.id}`);
+    } catch (e) {}
+
     // Save locally
     setAccounts((prev) => {
       const updated = [
