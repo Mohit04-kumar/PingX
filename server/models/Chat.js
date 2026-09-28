@@ -1,43 +1,59 @@
 const mongoose = require('mongoose');
 
-const messageSchema = new mongoose.Schema({
-  id: {
-    type: String,
-    default: () => `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
-  },
-  senderId: {
-    type: String,
-    required: true
-  },
-  senderName: {
-    type: String,
-    default: 'User'
-  },
-  content: {
-    type: String,
-    default: ''
-  },
-  mediaUrl: {
-    type: String,
-    default: ''
-  },
-  timestamp: {
-    type: String,
-    default: () => new Date().toISOString()
-  },
-  status: {
-    type: String,
-    enum: ['sent', 'delivered', 'read'],
-    default: 'sent'
-  },
-  reactions: [
-    {
-      emoji: String,
-      count: Number,
-      users: [String]
+const messageSchema = new mongoose.Schema(
+  {
+    id: {
+      type: String,
+      default: () => `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    },
+    senderId: {
+      type: String,
+      required: true
+    },
+    senderName: {
+      type: String,
+      default: 'User'
+    },
+    content: {
+      type: String,
+      default: ''
+    },
+    mediaUrl: {
+      type: String,
+      default: ''
+    },
+    attachments: {
+      type: Array,
+      default: []
+    },
+    deletedForEveryone: {
+      type: Boolean,
+      default: false
+    },
+    deletedFor: {
+      type: [String],
+      default: []
+    },
+    callLog: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
+    },
+    timestamp: {
+      type: String,
+      default: () => new Date().toISOString()
+    },
+    status: {
+      type: String,
+      enum: ['sent', 'delivered', 'read'],
+      default: 'sent'
+    },
+    reactions: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
     }
-  ]
-});
+  },
+  { _id: false, strict: false }
+);
 
 const chatSchema = new mongoose.Schema(
   {

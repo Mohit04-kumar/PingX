@@ -862,15 +862,81 @@ app.get('/api/chats', authenticate, async (req, res) => {
 app.get('/api/chats/:id/messages', authenticate, async (req, res) => {
   try {
     const chatId = req.params.id;
+    let msgs = [];
     if (isDbConnected()) {
       const chat = await Chat.findOne({ id: chatId }).lean();
-      return res.json(chat ? chat.messages || [] : []);
+      msgs = chat ? chat.messages || [] : [];
+    } else {
+      msgs = data.getMessages(chatId) || [];
     }
-    const msgs = data.getMessages(chatId);
-    res.json(msgs || []);
+
+    // Filter out messages that current user chose to "delete for me"
+    if (req.userId) {
+      msgs = msgs.filter((m) => !Array.isArray(m.deletedFor) || !m.deletedFor.includes(req.userId));
+    }
+
+    res.json(msgs);
   } catch (err) {
     console.error('Error fetching messages:', err);
     res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// Delete message (WhatsApp style: 'forEveryone' or 'forMe')
+app.post('/api/chats/:id/messages/:messageId/delete', authenticate, async (req, res) => {
+  try {
+    const chatId = req.params.id;
+    const messageId = req.params.messageId;
+    const deleteType = req.body?.deleteType || 'forMe';
+    const userId = req.userId;
+
+    if (isDbConnected()) {
+      if (deleteType === 'forEveryone') {
+        await Chat.updateOne(
+          { id: chatId, 'messages.id': messageId },
+          {
+            $set: {
+              'messages.$.content': '🚫 This message was deleted',
+              'messages.$.deletedForEveryone': true,
+              'messages.$.attachments': []
+            }
+          }
+        );
+        const chat = await Chat.findOne({ id: chatId });
+        if (chat && chat.lastMessage?.id === messageId) {
+          chat.lastMessage.content = '🚫 This message was deleted';
+          chat.lastMessage.deletedForEveryone = true;
+          await chat.save();
+        }
+      } else {
+        // delete for me
+        await Chat.updateOne(
+          { id: chatId, 'messages.id': messageId },
+          {
+            $addToSet: { 'messages.$.deletedFor': userId }
+          }
+        );
+      }
+    } else {
+      data.deleteMessageFromChat(chatId, messageId, deleteType, userId);
+    }
+
+    // Broadcast deletion events
+    try {
+      if (deleteType === 'forEveryone') {
+        io.to(chatId).emit('message_deleted_for_everyone', { roomId: chatId, messageId });
+      } else {
+        const userSocket = activeUsers.get(userId);
+        if (userSocket) {
+          io.to(userSocket).emit('message_deleted_for_me', { roomId: chatId, messageId });
+        }
+      }
+    } catch (e) {}
+
+    res.json({ success: true, deleteType, messageId });
+  } catch (err) {
+    console.error('Error deleting message:', err);
+    res.status(500).json({ error: 'Failed to delete message' });
   }
 });
 
@@ -1226,9 +1292,86 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('delete_message_request', async ({ room, messageId, deleteType, userId }) => {
+    if (!room || !messageId) return;
+    const reqUserId = userId || currentUserId;
+
+    if (deleteType === 'forEveryone') {
+      if (isDbConnected()) {
+        try {
+          await Chat.updateOne(
+            { id: room, 'messages.id': messageId },
+            {
+              $set: {
+                'messages.$.content': '🚫 This message was deleted',
+                'messages.$.deletedForEveryone': true,
+                'messages.$.attachments': []
+              }
+            }
+          );
+        } catch (e) {}
+      } else {
+        data.deleteMessageFromChat(room, messageId, 'forEveryone', reqUserId);
+      }
+      io.to(room).emit('message_deleted_for_everyone', { roomId: room, messageId });
+    } else {
+      if (isDbConnected()) {
+        try {
+          await Chat.updateOne(
+            { id: room, 'messages.id': messageId },
+            { $addToSet: { 'messages.$.deletedFor': reqUserId } }
+          );
+        } catch (e) {}
+      } else {
+        data.deleteMessageFromChat(room, messageId, 'forMe', reqUserId);
+      }
+      socket.emit('message_deleted_for_me', { roomId: room, messageId });
+    }
+  });
+
   socket.on('delete_message', ({ room, messageId }) => {
     if (room && messageId) {
-      io.to(room).emit('message_deleted', { messageId });
+      io.to(room).emit('message_deleted_for_everyone', { roomId: room, messageId });
+    }
+  });
+
+  // Real-time Voice & Video Calling Signaling
+  socket.on('call_user', ({ targetUserId, callerInfo, callType, roomId }) => {
+    if (targetUserId) {
+      io.to(`user_${targetUserId}`).emit('incoming_call', {
+        callerInfo,
+        callType,
+        roomId
+      });
+    }
+  });
+
+  socket.on('call_accepted', ({ callerUserId, partnerInfo, roomId }) => {
+    if (callerUserId) {
+      io.to(`user_${callerUserId}`).emit('call_accepted', { partnerInfo, roomId });
+    }
+  });
+
+  socket.on('call_rejected', ({ callerUserId, reason, roomId }) => {
+    if (callerUserId) {
+      io.to(`user_${callerUserId}`).emit('call_rejected', { reason: reason || 'declined', roomId });
+    }
+  });
+
+  socket.on('call_ended', ({ targetUserId, roomId }) => {
+    if (targetUserId) {
+      io.to(`user_${targetUserId}`).emit('call_ended', { roomId });
+    }
+    if (roomId) {
+      socket.to(roomId).emit('call_ended', { roomId });
+    }
+  });
+
+  socket.on('webrtc_signal', ({ targetUserId, signal, roomId }) => {
+    if (targetUserId) {
+      io.to(`user_${targetUserId}`).emit('webrtc_signal', { signal, from: currentUserId, roomId });
+    } else if (roomId) {
+      socket.to(roomId).emit('webrtc_signal', { signal, from: currentUserId, roomId });
     }
   });
 

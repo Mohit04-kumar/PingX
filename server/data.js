@@ -77,13 +77,29 @@ function getMessages(chatId) {
   return room ? room.messages : [];
 }
 
-function createChat({ id, participants = [], type = 'direct', messages = [] }) {
-  const chatId = id || `chat_${Date.now()}`;
-  const chat = { id: chatId, participants, type, messages };
-  chats.unshift(chat);
-  saveState();
-  return chat;
+function deleteMessageFromChat(roomId, messageId, deleteType = 'forMe', userId = null) {
+  const room = chats.find((c) => c.id === roomId);
+  if (!room || !Array.isArray(room.messages)) return false;
+  if (deleteType === 'forEveryone') {
+    const msg = room.messages.find((m) => m.id === messageId);
+    if (msg) {
+      msg.content = '🚫 This message was deleted';
+      msg.deletedForEveryone = true;
+      msg.attachments = [];
+      saveState();
+      return true;
+    }
+  } else {
+    const msg = room.messages.find((m) => m.id === messageId);
+    if (msg && userId) {
+      if (!Array.isArray(msg.deletedFor)) msg.deletedFor = [];
+      if (!msg.deletedFor.includes(userId)) msg.deletedFor.push(userId);
+      saveState();
+      return true;
+    }
+  }
+  return false;
 }
 
-module.exports = { accounts, friendRequests, chats, PRODUCT_DATABASE, searchProducts, addMessageToChat, getChatsForUser, getMessages, createChat, saveState };
+module.exports = { accounts, friendRequests, chats, PRODUCT_DATABASE, searchProducts, addMessageToChat, deleteMessageFromChat, getChatsForUser, getMessages, createChat, saveState };
 

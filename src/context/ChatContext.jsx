@@ -108,6 +108,8 @@ export function ChatProvider({ children, onAddPing }) {
   const [typingUsers, setTypingUsers] = useState({});
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [activeSummary, setActiveSummary] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [activeCall, setActiveCall] = useState(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -157,7 +159,8 @@ export function ChatProvider({ children, onAddPing }) {
       .then((r) => r.json())
       .then((msgs) => {
         if (Array.isArray(msgs)) {
-          setChats((prev) => prev.map((c) => (c.id === activeChatId ? { ...c, messages: msgs } : c)));
+          const visible = msgs.filter((m) => !Array.isArray(m.deletedFor) || !m.deletedFor.includes(user?.id));
+          setChats((prev) => prev.map((c) => (c.id === activeChatId ? { ...c, messages: visible } : c)));
         }
       })
       .catch(() => {});
@@ -196,14 +199,15 @@ export function ChatProvider({ children, onAddPing }) {
         .then((r) => r.json())
         .then((msgs) => {
           if (Array.isArray(msgs) && msgs.length > 0) {
+            const visibleMsgs = msgs.filter((m) => !Array.isArray(m.deletedFor) || !m.deletedFor.includes(user?.id));
             setChats((prev) => {
               const currentChat = prev.find((c) => c.id === activeChatId);
               const currentLength = currentChat?.messages?.length || 0;
               const currentMsgIds = new Set((currentChat?.messages || []).map((m) => m.id));
-              const hasNew = msgs.some((m) => !currentMsgIds.has(m.id));
+              const hasNew = visibleMsgs.some((m) => !currentMsgIds.has(m.id));
 
-              if (hasNew || msgs.length !== currentLength) {
-                const latest = msgs[msgs.length - 1];
+              if (hasNew || visibleMsgs.length !== currentLength) {
+                const latest = visibleMsgs[visibleMsgs.length - 1];
                 if (latest && latest.senderId !== user?.id && !currentMsgIds.has(latest.id)) {
                   notifyIncomingMessage(latest, currentChat?.user);
                 }
@@ -211,7 +215,7 @@ export function ChatProvider({ children, onAddPing }) {
                   c.id === activeChatId
                     ? {
                         ...c,
-                        messages: msgs,
+                        messages: visibleMsgs,
                         lastMessage: latest || c.lastMessage
                       }
                     : c
@@ -375,13 +379,73 @@ export function ChatProvider({ children, onAddPing }) {
       );
     });
 
-    socket.on('message_deleted', ({ messageId }) => {
+    socket.on('message_deleted_for_everyone', ({ roomId, messageId }) => {
       setChats((prev) =>
-        prev.map((c) => ({
-          ...c,
-          messages: (c.messages || []).filter((m) => m.id !== messageId)
-        }))
+        prev.map((c) => {
+          if (roomId && c.id !== roomId) return c;
+          return {
+            ...c,
+            messages: (c.messages || []).map((m) =>
+              m.id === messageId
+                ? { ...m, content: '🚫 This message was deleted', deletedForEveryone: true, attachments: [] }
+                : m
+            ),
+            lastMessage:
+              c.lastMessage?.id === messageId
+                ? { ...c.lastMessage, content: '🚫 This message was deleted', deletedForEveryone: true }
+                : c.lastMessage
+          };
+        })
       );
+    });
+
+    socket.on('message_deleted_for_me', ({ roomId, messageId }) => {
+      setChats((prev) =>
+        prev.map((c) => {
+          if (roomId && c.id !== roomId) return c;
+          return {
+            ...c,
+            messages: (c.messages || []).filter((m) => m.id !== messageId)
+          };
+        })
+      );
+    });
+
+    socket.on('message_deleted', ({ messageId, roomId }) => {
+      setChats((prev) =>
+        prev.map((c) => {
+          if (roomId && c.id !== roomId) return c;
+          return {
+            ...c,
+            messages: (c.messages || []).map((m) =>
+              m.id === messageId
+                ? { ...m, content: '🚫 This message was deleted', deletedForEveryone: true, attachments: [] }
+                : m
+            )
+          };
+        })
+      );
+    });
+
+    // Real-time Call Signaling Listeners
+    socket.on('incoming_call', (payload) => {
+      if (payload && payload.callerInfo) {
+        setIncomingCall(payload);
+      }
+    });
+
+    socket.on('call_accepted', (payload) => {
+      setActiveCall((prev) => (prev ? { ...prev, isConnected: true, partner: payload?.partnerInfo || prev.partner } : prev));
+    });
+
+    socket.on('call_rejected', () => {
+      setActiveCall(null);
+      setIncomingCall(null);
+    });
+
+    socket.on('call_ended', () => {
+      setActiveCall(null);
+      setIncomingCall(null);
     });
 
     return () => {
@@ -623,14 +687,161 @@ export function ChatProvider({ children, onAddPing }) {
     );
   };
 
-  const deleteMessage = (messageId) => {
-    if (!activeChatId) return;
+  const deleteMessage = (messageId, deleteType = 'forEveryone') => {
+    const currentChatId = activeChatId || activeChat?.id;
+    if (!currentChatId || !messageId) return;
+
+    // Optimistic UI update
     setChats((prev) =>
       prev.map((chat) => {
-        if (chat.id !== activeChatId) return chat;
-        return { ...chat, messages: (chat.messages || []).filter((message) => message.id !== messageId) };
+        if (chat.id !== currentChatId) return chat;
+        if (deleteType === 'forEveryone') {
+          return {
+            ...chat,
+            messages: (chat.messages || []).map((m) =>
+              m.id === messageId
+                ? { ...m, content: '🚫 This message was deleted', deletedForEveryone: true, attachments: [] }
+                : m
+            ),
+            lastMessage:
+              chat.lastMessage?.id === messageId
+                ? { ...chat.lastMessage, content: '🚫 This message was deleted', deletedForEveryone: true }
+                : chat.lastMessage
+          };
+        } else {
+          // Delete for me only
+          return {
+            ...chat,
+            messages: (chat.messages || []).filter((m) => m.id !== messageId)
+          };
+        }
       })
     );
+
+    // Broadcast delete request via socket
+    try {
+      const socket = socketRef.current;
+      if (socket) {
+        socket.emit('delete_message_request', {
+          room: currentChatId,
+          messageId,
+          deleteType,
+          userId: user?.id
+        });
+      }
+    } catch {}
+
+    // Persist deletion to server
+    const t = tokenFromStorage() || user?.token || user?.id;
+    fetch(`${API_BASE}/api/chats/${encodeURIComponent(currentChatId)}/messages/${encodeURIComponent(messageId)}/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${t}`
+      },
+      body: JSON.stringify({ deleteType })
+    }).catch((err) => {
+      console.warn('Failed to delete message on server:', err);
+    });
+  };
+
+  // Real-time Voice & Video Calling Handlers
+  const startCall = (partner, callType = 'voice') => {
+    const currentChat = activeChat || chats.find((c) => c.user?.id === partner?.id);
+    const roomId = currentChat?.id || activeChatId || `call_${Date.now()}`;
+    const partnerId = partner?.id || partner?.username;
+
+    setActiveCall({
+      partner: partner || currentChat?.user,
+      callType,
+      roomId,
+      isInitiator: true,
+      startedAt: Date.now()
+    });
+
+    try {
+      const socket = socketRef.current;
+      if (socket && partnerId) {
+        socket.emit('call_user', {
+          targetUserId: partnerId,
+          callerInfo: {
+            id: user?.id,
+            name: user?.name || user?.username,
+            username: user?.username,
+            avatar: user?.avatar
+          },
+          callType,
+          roomId
+        });
+      }
+    } catch {}
+  };
+
+  const answerCall = () => {
+    if (!incomingCall) return;
+    const callData = {
+      partner: incomingCall.callerInfo,
+      callType: incomingCall.callType || 'voice',
+      roomId: incomingCall.roomId,
+      isInitiator: false,
+      startedAt: Date.now()
+    };
+    setActiveCall(callData);
+
+    try {
+      const socket = socketRef.current;
+      if (socket) {
+        socket.emit('call_accepted', {
+          callerUserId: incomingCall.callerInfo?.id,
+          partnerInfo: {
+            id: user?.id,
+            name: user?.name,
+            username: user?.username,
+            avatar: user?.avatar
+          },
+          roomId: incomingCall.roomId
+        });
+      }
+    } catch {}
+    setIncomingCall(null);
+  };
+
+  const rejectCall = () => {
+    if (!incomingCall) return;
+    try {
+      const socket = socketRef.current;
+      if (socket) {
+        socket.emit('call_rejected', {
+          callerUserId: incomingCall.callerInfo?.id,
+          roomId: incomingCall.roomId
+        });
+      }
+    } catch {}
+    setIncomingCall(null);
+  };
+
+  const endCall = (summary = null) => {
+    const call = activeCall;
+    if (call) {
+      try {
+        const socket = socketRef.current;
+        if (socket) {
+          socket.emit('call_ended', {
+            targetUserId: call.partner?.id,
+            roomId: call.roomId
+          });
+        }
+      } catch {}
+
+      if (summary) {
+        const durSec = summary.duration || 0;
+        const durStr = durSec > 0 ? `${Math.floor(durSec / 60)}m ${durSec % 60}s` : 'Call ended';
+        const label = summary.type === 'video' ? `📹 Video call • ${durStr}` : `📞 Voice call • ${durStr}`;
+        sendMessage(label, [], { callLog: { ...summary, durationStr: durStr } });
+      }
+    }
+    setActiveCall(null);
+    setIncomingCall(null);
   };
 
   const editMessage = (messageId, newContent) => {
@@ -767,6 +978,14 @@ export function ChatProvider({ children, onAddPing }) {
       addReaction,
       deleteMessage,
       editMessage,
+      incomingCall,
+      setIncomingCall,
+      activeCall,
+      setActiveCall,
+      startCall,
+      answerCall,
+      rejectCall,
+      endCall,
       triggerGroupSummary,
       summaryModalOpen,
       setSummaryModalOpen,
