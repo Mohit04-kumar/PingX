@@ -2,10 +2,12 @@ const mongoose = require('mongoose');
 const dns = require('dns');
 
 // On Windows or environments where default ISP DNS fails SRV lookups, set public DNS resolvers
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch (e) {
-  console.warn('⚠️ Could not set custom DNS servers:', e.message);
+if (!process.env.VERCEL) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch (e) {
+    console.warn('⚠️ Could not set custom DNS servers:', e.message);
+  }
 }
 
 const DEFAULT_ATLAS_URI = 'mongodb+srv://mrmohitkumar004_db_user:dk50ILaPswZFzDK9@cluster0.hqfkwu6.mongodb.net/pingx?retryWrites=true&w=majority&appName=Cluster0';
