@@ -8,8 +8,7 @@
  * 
  * ZERO API keys are ever stored or exposed in the browser bundle.
  */
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001';
+import { API_BASE } from '../config/api';
 
 /**
  * Generate AI Response via Backend Proxy

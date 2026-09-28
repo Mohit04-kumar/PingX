@@ -32,7 +32,8 @@ import {
   MessageCircle,
   Sparkles,
   SquarePen,
-  ChevronDown
+  ChevronDown,
+  ArrowLeft
 } from 'lucide-react';
 
 export function ChatView() {
@@ -57,8 +58,14 @@ export function ChatView() {
     activeSummary,
     convertActionableToPing
   } = useChat();
-  const { user, accounts = [] } = useAuth();
+  const { user, accounts = [], refreshUsers } = useAuth();
   const { openUserProfile } = useProfileModal();
+
+  React.useEffect(() => {
+    if (refreshUsers) refreshUsers();
+  }, [refreshUsers]);
+
+  const availableMembers = accounts.filter((a) => a && a.id && a.id !== user?.id);
 
   const [inputContent, setInputContent] = useState('');
   const [chatSearch, setChatSearch] = useState('');
@@ -223,7 +230,7 @@ export function ChatView() {
 
       {/* Left Conversations Sidebar (Matching Image 2) */}
       <div 
-        className="w-full lg:w-80 border-r flex flex-col transition-colors duration-200 bg-white"
+        className={`${activeChatId ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 border-r flex-col transition-colors duration-200 bg-white h-full`}
         style={{ borderColor: 'var(--border)' }}
       >
         
@@ -234,7 +241,7 @@ export function ChatView() {
               onClick={() => setIsAddContactOpen(true)}
               className="flex items-center gap-1.5 text-base font-extrabold text-slate-900 font-heading cursor-pointer hover:opacity-80 transition-opacity"
             >
-              <span>{user?.username || 'ramanraj'}</span>
+              <span>{user?.name || user?.username || 'Messages'}</span>
               <ChevronDown className="w-4 h-4 text-slate-500" />
             </button>
 
@@ -333,7 +340,7 @@ export function ChatView() {
               </div>
               <Avatar
                 src={user?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80'}
-                name={user?.name || 'Raman Raj'}
+                name={user?.name || user?.username || 'You'}
                 size="md"
                 className="border-2 border-slate-200"
               />
@@ -346,21 +353,59 @@ export function ChatView() {
         {/* Conversation List */}
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
           {filteredChats.length === 0 ? (
-            <div className="text-center py-10 px-4 text-xs space-y-3" style={{ color: 'var(--text-muted)' }}>
+            <div className="text-center py-6 px-3 text-xs space-y-4" style={{ color: 'var(--text-muted)' }}>
               <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center border" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border)', color: 'var(--accent)' }}>
                 <MessageSquare className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <p className="font-extrabold text-sm" style={{ color: 'var(--text-primary)' }}>No active chats</p>
-                <p className="text-[11px] leading-relaxed">Connect with members or start a new direct conversation.</p>
+                <p className="font-extrabold text-sm" style={{ color: 'var(--text-primary)' }}>No active chats yet</p>
+                <p className="text-[11px] leading-relaxed">Connect with registered members or send a new direct message.</p>
               </div>
               <button
                 onClick={() => setIsAddContactOpen(true)}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-white cursor-pointer shadow-sm transition-transform hover:scale-105"
                 style={{ backgroundColor: 'var(--accent)' }}
               >
-                + Start New Chat
+                + Find Members to Chat
               </button>
+
+              {availableMembers.length > 0 && (
+                <div className="pt-3 border-t text-left space-y-2" style={{ borderColor: 'var(--border)' }}>
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
+                      Available Members ({availableMembers.length})
+                    </span>
+                    <button
+                      onClick={() => setIsAddContactOpen(true)}
+                      className="text-[10px] font-bold text-[#7256c3] hover:underline cursor-pointer"
+                    >
+                      View all
+                    </button>
+                  </div>
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {availableMembers.slice(0, 6).map((member) => (
+                      <div
+                        key={member.id}
+                        className="p-2 rounded-xl border border-slate-200 bg-white hover:border-[#7256c3] flex items-center justify-between gap-2 shadow-2xs transition-all"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Avatar src={member.avatar} name={member.name} size="sm" showOnline={member.status === 'online'} />
+                          <div className="truncate">
+                            <p className="text-xs font-bold text-slate-900 truncate leading-tight">{member.name}</p>
+                            <p className="text-[10px] text-[#7256c3] font-mono leading-tight">@{member.username}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => startDirectChat(member)}
+                          className="px-2.5 py-1 rounded-lg text-white text-[11px] font-bold bg-[#7256c3] hover:bg-[#6044b3] shadow-xs cursor-pointer whitespace-nowrap transition-transform hover:scale-102"
+                        >
+                          Message
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             filteredChats.map((chat) => {
@@ -445,7 +490,10 @@ export function ChatView() {
       </div>
 
       {/* Right Chat Window */}
-      <div className="flex-1 flex flex-col relative" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+      <div 
+        className={`${activeChatId ? 'flex' : 'hidden lg:flex'} flex-1 flex-col relative h-full`} 
+        style={{ backgroundColor: 'var(--bg-subtle)' }}
+      >
         
         {!activeChat ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 animate-fadeIn">
@@ -468,29 +516,40 @@ export function ChatView() {
         ) : (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b flex items-center justify-between" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-              <div 
-                className="flex items-center gap-3 cursor-pointer group hover:opacity-95 transition-opacity"
-                onClick={() => {
-                  if (activeChat?.user) {
-                    openUserProfile(activeChat.user);
-                  }
-                }}
-                title={activeChat?.user ? `View ${activeChat.user.name}'s Profile` : undefined}
-              >
-                <div className="relative">
-                  <Avatar
-                    src={activeChat?.user?.avatar || activeChat?.group?.avatar}
-                    name={activeChat?.user?.name || activeChat?.group?.name || 'Contact'}
-                    size="md"
-                    className="border transition-transform group-hover:scale-105"
-                    style={{ borderColor: 'var(--accent)' }}
-                  />
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold flex items-center gap-2 group-hover:text-[#7256c3] transition-colors" style={{ color: 'var(--text-primary)' }}>
-                    <span>{activeChat?.user?.name || activeChat?.group?.name}</span>
+            <div className="p-3.5 sm:p-4 border-b flex items-center justify-between" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* WhatsApp-style Back button on smartphone screens */}
+                <button
+                  type="button"
+                  onClick={() => setActiveChatId(null)}
+                  className="lg:hidden p-2 -ml-1 rounded-xl text-slate-700 hover:bg-slate-100 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Back to conversations"
+                >
+                  <ArrowLeft className="w-5 h-5 text-slate-700" />
+                </button>
+
+                <div 
+                  className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group hover:opacity-95 transition-opacity"
+                  onClick={() => {
+                    if (activeChat?.user) {
+                      openUserProfile(activeChat.user);
+                    }
+                  }}
+                  title={activeChat?.user ? `View ${activeChat.user.name}'s Profile` : undefined}
+                >
+                  <div className="relative">
+                    <Avatar
+                      src={activeChat?.user?.avatar || activeChat?.group?.avatar}
+                      name={activeChat?.user?.name || activeChat?.group?.name || 'Contact'}
+                      size="md"
+                      className="border transition-transform group-hover:scale-105"
+                      style={{ borderColor: 'var(--accent)' }}
+                    />
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold flex items-center gap-2 group-hover:text-[#7256c3] transition-colors" style={{ color: 'var(--text-primary)' }}>
+                      <span>{activeChat?.user?.name || activeChat?.group?.name}</span>
                     {activeChat?.user && (
                       <span className="text-[10px] font-semibold text-[#7256c3] bg-violet-50 px-2 py-0.5 rounded-full">
                         View Profile ›
@@ -519,6 +578,7 @@ export function ChatView() {
                   </div>
                 </div>
               </div>
+            </div>
 
               <div className="flex items-center gap-2">
                 <button 

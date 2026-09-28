@@ -1,5 +1,4 @@
-// Secure Auth API Client interfacing with Node.js Express backend
-const API_BASE = import.meta.env.VITE_API_BASE || '';
+import { API_BASE } from '../config/api';
 
 export const authApi = {
   // 1. Register user with detailed profile & password

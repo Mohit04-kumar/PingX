@@ -24,13 +24,18 @@ export function ConnectView({ setActiveTab }) {
     accounts, 
     friendRequests, 
     sendFriendRequest, 
-    searchUsers 
+    searchUsers,
+    refreshUsers
   } = useAuth();
   const { startDirectChat } = useChat();
   const { openUserProfile } = useProfileModal();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [actionNotice, setActionNotice] = useState('');
+
+  React.useEffect(() => {
+    if (refreshUsers) refreshUsers();
+  }, [refreshUsers]);
 
   const filteredUsers = searchUsers(searchQuery).filter(u => u.id !== user?.id);
 

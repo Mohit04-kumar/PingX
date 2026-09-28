@@ -5,7 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { useProfileModal } from '../../context/ProfileModalContext';
 
 export function AddContactModal({ isOpen, onClose, onSave }) {
-  const { user, searchUsers, sendFriendRequest, friendRequests, respondToFriendRequest, accounts } = useAuth();
+  const { user, searchUsers, sendFriendRequest, friendRequests, respondToFriendRequest, accounts, refreshUsers } = useAuth();
   const { addToast } = useToast();
   const { openUserProfile } = useProfileModal();
   const [activeTab, setActiveTab] = useState('search'); // 'search' or 'requests'
@@ -13,6 +13,13 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
   const [actionSuccess, setActionSuccess] = useState('');
   const [loadingIds, setLoadingIds] = useState({});
   const [errorNotice, setErrorNotice] = useState('');
+
+  // Automatically refresh registered members whenever the modal opens
+  React.useEffect(() => {
+    if (isOpen && refreshUsers) {
+      refreshUsers();
+    }
+  }, [isOpen, refreshUsers]);
 
   if (!isOpen) return null;
 
@@ -152,11 +159,22 @@ export function AddContactModal({ isOpen, onClose, onSave }) {
               />
             </div>
 
-            {/* Registered Users Search Results */}
+            {/* Registered Users Search Results Header */}
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 px-1">
+              <span>{searchHandle.trim() ? `Search Results (${searchResults.length})` : `Available Members (${searchResults.length})`}</span>
+              {searchHandle && (
+                <button onClick={() => setSearchHandle('')} className="text-[#7256c3] hover:underline cursor-pointer">
+                  Show all
+                </button>
+              )}
+            </div>
+
             <div className="max-h-60 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
               {searchResults.length === 0 ? (
                 <div className="text-center py-6 text-xs text-slate-400">
-                  No registered users match "{searchHandle}".
+                  {searchHandle.trim()
+                    ? `No registered users match "${searchHandle}".`
+                    : 'No other registered members found on PingX yet.'}
                 </div>
               ) : (
                 searchResults.map((u) => {

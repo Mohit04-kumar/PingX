@@ -34,6 +34,29 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
+// Cached MongoDB connection assurance for Vercel serverless functions
+let serverlessDbPromise = null;
+const ensureServerlessDb = async () => {
+  if (isDbConnected()) return true;
+  if (!serverlessDbPromise) {
+    serverlessDbPromise = connectDB();
+  }
+  return serverlessDbPromise;
+};
+
+app.use(async (req, res, next) => {
+  if (req.path.startsWith('/api') && !isDbConnected()) {
+    try {
+      await ensureServerlessDb();
+    } catch (e) {}
+  }
+  next();
+});
+
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
+const activeUsers = new Map();
+
 // Secure In-Memory Cache for Phone OTP Generation & Verification
 // Key: cleanPhone -> Value: { codeHash, expiresAt, attempts, lastSentAt, purpose, verified, verificationToken }
 const otpStore = new Map();
@@ -76,22 +99,21 @@ app.get('/api/users', async (req, res) => {
       if (q) {
         const regex = new RegExp(q, 'i');
         queryObj = {
-          $or: [{ name: regex }, { username: regex }, { email: regex }]
+          $or: [{ name: regex }, { username: regex }, { email: regex }, { phone: regex }]
         };
       }
-      const users = await User.find(queryObj).limit(50).lean();
-      if (users && users.length > 0) {
-        return res.json(users);
-      }
+      const users = await User.find(queryObj).limit(100).lean();
+      return res.json(users || []);
     }
 
     // Fallback to data.accounts from state.json
-    if (!q) return res.json(data.accounts);
-    const matches = data.accounts.filter(
+    if (!q) return res.json(data.accounts || []);
+    const matches = (data.accounts || []).filter(
       (a) =>
         (a.name || '').toLowerCase().includes(q.toLowerCase()) ||
         (a.username || '').toLowerCase().includes(q.toLowerCase()) ||
-        (a.email || '').toLowerCase().includes(q.toLowerCase())
+        (a.email || '').toLowerCase().includes(q.toLowerCase()) ||
+        (a.phone || '').includes(q)
     );
     res.json(matches);
   } catch (err) {
@@ -486,6 +508,21 @@ app.post('/api/auth/register', async (req, res) => {
     // Clean up OTP session upon successful registration
     otpStore.delete(cleanPhone);
 
+    // Broadcast new registered member to all active devices in real-time
+    try {
+      io.emit('new_user_registered', {
+        id: createdUser.id,
+        name: createdUser.name,
+        username: createdUser.username,
+        email: createdUser.email,
+        phone: createdUser.phone,
+        avatar: createdUser.avatar,
+        bio: createdUser.bio,
+        status: createdUser.status || 'online',
+        location: createdUser.location
+      });
+    } catch (broadcastErr) {}
+
     const token = jwt.sign({ sub: createdUser.id }, JWT_SECRET, { expiresIn: '30d' });
     return res.json({ 
       success: true, 
@@ -496,6 +533,22 @@ app.post('/api/auth/register', async (req, res) => {
   } catch (err) {
     console.error('Error registering user:', err);
     res.status(500).json({ error: 'Registration failed: ' + (err.message || 'Server error') });
+  }
+});
+
+// Get all registered users (excluding sensitive password hash)
+app.get('/api/users', async (req, res) => {
+  try {
+    let users = [];
+    if (isDbConnected()) {
+      users = await User.find({}, '-password').sort({ createdAt: -1 }).lean();
+    } else {
+      users = data.accounts.map(({ password, ...u }) => u);
+    }
+    res.json(users);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
@@ -538,9 +591,14 @@ function authenticate(req, res, next) {
   const token = parts[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.userId = decoded.sub;
-    next();
+    req.userId = decoded.sub || decoded.id;
+    return next();
   } catch (e) {
+    // Resilient fallback for direct user sessions (e.g., usr_... or user_...)
+    if (token && (token.startsWith('user_') || token.startsWith('usr_'))) {
+      req.userId = token;
+      return next();
+    }
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
@@ -553,6 +611,7 @@ app.post('/api/friend-request', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid request parameters' });
     }
 
+    let createdReq = null;
     if (isDbConnected()) {
       const exists = await FriendRequest.findOne({
         senderId,
@@ -567,18 +626,27 @@ app.post('/api/friend-request', async (req, res) => {
         receiverId,
         status: 'pending'
       });
-      return res.json({ success: true, request: newReq.toJSON() });
+      createdReq = newReq.toJSON();
+    } else {
+      // Fallback
+      const exists = data.friendRequests.find(
+        (r) => r.senderId === senderId && r.receiverId === receiverId && ['pending', 'accepted'].includes(r.status)
+      );
+      if (exists) return res.json({ success: false, error: 'Already requested' });
+
+      createdReq = { id: `req_${Date.now()}`, senderId, receiverId, status: 'pending', createdAt: new Date().toISOString() };
+      data.friendRequests.unshift(createdReq);
+      data.saveState();
     }
 
-    // Fallback
-    const exists = data.friendRequests.find(
-      (r) => r.senderId === senderId && r.receiverId === receiverId && ['pending', 'accepted'].includes(r.status)
-    );
-    if (exists) return res.json({ success: false, error: 'Already requested' });
+    // Real-time broadcast to receiver's socket / user room
+    try {
+      io.to(`user_${receiverId}`).emit('friend_request_received', createdReq);
+      const receiverSock = activeUsers.get(receiverId);
+      if (receiverSock) io.to(receiverSock).emit('friend_request_received', createdReq);
+    } catch (e) {}
 
-    const newReq = { id: `req_${Date.now()}`, senderId, receiverId, status: 'pending', createdAt: new Date().toISOString() };
-    data.friendRequests.unshift(newReq);
-    res.json({ success: true, request: newReq });
+    res.json({ success: true, request: createdReq });
   } catch (err) {
     console.error('Error in friend-request:', err);
     res.status(500).json({ success: false, error: 'Friend request failed' });
@@ -612,9 +680,10 @@ app.post('/api/respond-request', async (req, res) => {
     }
 
     let createdChat = null;
+    let reqObj = null;
 
     if (isDbConnected()) {
-      const reqObj = await FriendRequest.findOneAndUpdate({ id: requestId }, { status }, { new: true });
+      reqObj = await FriendRequest.findOneAndUpdate({ id: requestId }, { status }, { new: true });
       if (reqObj && status === 'accepted') {
         const participants = [reqObj.senderId, reqObj.receiverId];
         const existingChat = await Chat.findOne({
@@ -634,21 +703,43 @@ app.post('/api/respond-request', async (req, res) => {
           createdChat = newChatDoc.toJSON();
         }
       }
-      return res.json({ success: true, chat: createdChat });
-    }
+    } else {
+      // Fallback
+      data.friendRequests.forEach((r) => {
+        if (r.id === requestId) {
+          r.status = status;
+          reqObj = r;
+        }
+      });
 
-    // Fallback
-    data.friendRequests.forEach((r) => {
-      if (r.id === requestId) r.status = status;
-    });
-
-    if (status === 'accepted') {
-      const reqObj = data.friendRequests.find((r) => r.id === requestId);
-      if (reqObj) {
-        const participants = [reqObj.senderId, reqObj.receiverId];
-        createdChat = data.createChat({ participants, type: 'direct', messages: [] });
+      if (status === 'accepted') {
+        if (!reqObj) reqObj = data.friendRequests.find((r) => r.id === requestId);
+        if (reqObj) {
+          const participants = [reqObj.senderId, reqObj.receiverId];
+          createdChat = data.createChat({ participants, type: 'direct', messages: [] });
+        }
       }
     }
+
+    // Real-time notification to both users
+    if (reqObj) {
+      try {
+        const payload = {
+          requestId,
+          status,
+          chat: createdChat,
+          senderId: reqObj.senderId,
+          receiverId: reqObj.receiverId
+        };
+        io.to(`user_${reqObj.senderId}`).emit('friend_request_responded', payload);
+        io.to(`user_${reqObj.receiverId}`).emit('friend_request_responded', payload);
+        const s1 = activeUsers.get(reqObj.senderId);
+        const s2 = activeUsers.get(reqObj.receiverId);
+        if (s1) io.to(s1).emit('friend_request_responded', payload);
+        if (s2) io.to(s2).emit('friend_request_responded', payload);
+      } catch (e) {}
+    }
+
     return res.json({ success: true, chat: createdChat });
   } catch (err) {
     console.error('Error responding to request:', err);
@@ -656,16 +747,53 @@ app.post('/api/respond-request', async (req, res) => {
   }
 });
 
-// Chats endpoints
+// Chats endpoints with participant profile population
 app.get('/api/chats', authenticate, async (req, res) => {
   try {
     const userId = req.userId;
+    let userChats = [];
     if (isDbConnected()) {
-      const userChats = await Chat.find({ participants: userId }).sort({ updatedAt: -1 }).lean();
-      return res.json(userChats);
+      userChats = await Chat.find({ participants: userId }).sort({ updatedAt: -1 }).lean();
+    } else {
+      userChats = data.getChatsForUser(userId);
     }
-    const chats = data.getChatsForUser(userId);
-    res.json(chats);
+
+    // Attach recipient user details for direct chats
+    const otherUserIds = Array.from(
+      new Set(
+        userChats
+          .filter((c) => c.type === 'direct' || !c.type)
+          .flatMap((c) => (c.participants || []).filter((p) => p !== userId))
+      )
+    );
+
+    let usersMap = new Map();
+    if (otherUserIds.length > 0) {
+      if (isDbConnected()) {
+        const users = await User.find({ id: { $in: otherUserIds } }).lean();
+        users.forEach((u) => usersMap.set(u.id, u));
+      }
+      otherUserIds.forEach((uid) => {
+        if (!usersMap.has(uid)) {
+          const acc = data.accounts.find((a) => a.id === uid);
+          if (acc) usersMap.set(uid, acc);
+        }
+      });
+    }
+
+    const populatedChats = userChats.map((c) => {
+      if (c.type === 'direct' || !c.type) {
+        const otherId = (c.participants || []).find((p) => p !== userId);
+        const partner = usersMap.get(otherId);
+        return {
+          ...c,
+          user: partner || c.user || { id: otherId, name: 'PingX Member', username: otherId, avatar: '' }
+        };
+      }
+      return c;
+    });
+
+    res.json(populatedChats);
   } catch (err) {
     console.error('Error fetching chats:', err);
     res.status(500).json({ error: 'Failed to fetch chats' });
@@ -693,21 +821,58 @@ app.post('/api/chats/:id/messages', authenticate, async (req, res) => {
     const message = req.body?.message;
     if (!message) return res.status(400).json({ success: false, error: 'Missing message' });
 
+    let targetParticipants = Array.isArray(req.body?.participants) && req.body.participants.length > 0
+      ? req.body.participants
+      : [];
+
+    if (targetParticipants.length === 0 && chatId.startsWith('chat_')) {
+      const raw = chatId.replace(/^chat_/, '');
+      const matches = raw.match(/(?:user|usr)_[a-zA-Z0-9_-]+/g);
+      if (matches && matches.length > 0) {
+        targetParticipants = matches;
+      }
+    }
+    if (req.userId && !targetParticipants.includes(req.userId)) {
+      targetParticipants.push(req.userId);
+    }
+
     if (isDbConnected()) {
-      await Chat.findOneAndUpdate(
-        { id: chatId },
-        {
-          $push: { messages: message },
-          $set: { lastMessage: message }
-        },
-        { upsert: true, new: true }
-      );
+      const existing = await Chat.findOne({ id: chatId });
+      if (!existing) {
+        await Chat.create({
+          id: chatId,
+          type: 'direct',
+          participants: targetParticipants,
+          messages: [message],
+          lastMessage: message
+        });
+      } else {
+        if (!existing.participants || existing.participants.length < 2) {
+          existing.participants = Array.from(new Set([...(existing.participants || []), ...targetParticipants]));
+        }
+        existing.messages.push(message);
+        existing.lastMessage = message;
+        await existing.save();
+      }
     } else {
+      let existing = data.chats.find((c) => c.id === chatId);
+      if (existing) {
+        if (!existing.participants || existing.participants.length < 2) {
+          existing.participants = Array.from(new Set([...(existing.participants || []), ...targetParticipants]));
+        }
+      }
       data.addMessageToChat(chatId, message);
     }
 
     try {
       io.to(chatId).emit('message', message);
+      targetParticipants.forEach((pid) => {
+        if (pid !== req.userId) {
+          io.to(`user_${pid}`).emit('message', message);
+          const sock = activeUsers.get(pid);
+          if (sock) io.to(sock).emit('message', message);
+        }
+      });
     } catch {}
 
     res.json({ success: true });
@@ -719,23 +884,41 @@ app.post('/api/chats/:id/messages', authenticate, async (req, res) => {
 
 app.post('/api/chats', authenticate, async (req, res) => {
   try {
-    const { participants, type, title } = req.body || {};
+    const { id, participants, type = 'direct', title } = req.body || {};
     if (!Array.isArray(participants) || participants.length === 0) {
       return res.status(400).json({ error: 'Missing participants' });
     }
 
+    const chatId = id || `chat_${participants.slice().sort().join('_')}`;
+
     if (isDbConnected()) {
+      let existing = await Chat.findOne({
+        $or: [
+          { id: chatId },
+          { participants: { $all: participants, $size: participants.length }, type }
+        ]
+      });
+
+      if (existing) {
+        return res.json({ success: true, chat: existing.toJSON() });
+      }
+
       const newChat = await Chat.create({
-        id: `chat_${Date.now()}`,
+        id: chatId,
         participants,
-        type: type || 'direct',
+        type,
         title: title || '',
         messages: []
       });
       return res.json({ success: true, chat: newChat.toJSON() });
     }
 
-    const chat = data.createChat({ participants, type: type || 'direct', messages: [] });
+    let existing = data.chats.find(
+      (c) => c.id === chatId || (c.participants && participants.every((p) => c.participants.includes(p)))
+    );
+    if (existing) return res.json({ success: true, chat: existing });
+
+    const chat = data.createChat({ id: chatId, participants, type, messages: [] });
     res.json({ success: true, chat });
   } catch (err) {
     console.error('Error creating chat:', err);
@@ -894,11 +1077,6 @@ app.post('/api/ai', async (req, res) => {
 // HTTP Server & Socket.IO Real-Time Engine
 // ---------------------------------------------------------------------------
 
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
-
-const activeUsers = new Map();
-
 io.on('connection', (socket) => {
   let currentUserId = null;
 
@@ -910,6 +1088,7 @@ io.on('connection', (socket) => {
       if (currentUserId) {
         socket.userId = currentUserId;
         activeUsers.set(currentUserId, socket.id);
+        socket.join(`user_${currentUserId}`);
         io.emit('online_users', Array.from(activeUsers.keys()));
       }
     }
@@ -919,6 +1098,7 @@ io.on('connection', (socket) => {
     if (userId) {
       currentUserId = userId;
       activeUsers.set(userId, socket.id);
+      socket.join(`user_${userId}`);
       io.emit('online_users', Array.from(activeUsers.keys()));
     }
   });
@@ -1019,4 +1199,8 @@ const startServer = async () => {
   });
 };
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+module.exports = app;

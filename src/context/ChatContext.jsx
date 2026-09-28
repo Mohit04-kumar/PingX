@@ -4,7 +4,8 @@ import { MOCK_CHATS } from '../data/mockChats';
 import { generateId, formatTimestamp } from '../utils/formatters';
 
 const ChatContext = createContext();
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001';
+import { API_BASE, SOCKET_URL } from '../config/api';
+import { io as socketIOClient } from 'socket.io-client';
 
 function tokenFromStorage() {
   try {
@@ -14,8 +15,6 @@ function tokenFromStorage() {
     return null;
   }
 }
-
-import { io as socketIOClient } from 'socket.io-client';
 
 const storageKey = 'pingx_chats';
 
@@ -90,6 +89,9 @@ export function ChatProvider({ children, onAddPing }) {
   });
 
   const [activeChatId, setActiveChatIdState] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return null;
+    }
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null;
     if (saved) {
       try {
@@ -131,19 +133,25 @@ export function ChatProvider({ children, onAddPing }) {
       .catch(() => {});
   }, [user]);
 
-  // Ensure activeChatId always points to a valid conversation if chats exist
+  // Ensure activeChatId points to a valid conversation on desktop; allow null on mobile for WhatsApp-style list
   useEffect(() => {
     if (chats.length > 0) {
       const exists = chats.some((c) => c.id === activeChatId);
-      if (!exists || !activeChatId) {
-        setActiveChatIdState(chats[0].id);
+      if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+        if (!exists || !activeChatId) {
+          setActiveChatIdState(chats[0].id);
+        }
+      } else {
+        if (activeChatId && !exists) {
+          setActiveChatIdState(null);
+        }
       }
     }
   }, [chats, activeChatId]);
 
   // When active chat changes, fetch full message history from server
   useEffect(() => {
-    const t = tokenFromStorage();
+    const t = tokenFromStorage() || user?.token || user?.id;
     if (!t || !activeChatId) return;
     fetch(`${API_BASE}/api/chats/${encodeURIComponent(activeChatId)}/messages`, { headers: { Authorization: `Bearer ${t}` } })
       .then((r) => r.json())
@@ -153,7 +161,105 @@ export function ChatProvider({ children, onAddPing }) {
         }
       })
       .catch(() => {});
-  }, [activeChatId]);
+  }, [activeChatId, user?.id]);
+
+  const notifyIncomingMessage = (message, partnerUser) => {
+    if (!message || message.senderId === user?.id) return;
+    const name = partnerUser?.name || message.senderName || 'A friend';
+    if (onAddPing) {
+      onAddPing({
+        id: generateId('ping_msg'),
+        type: 'social',
+        badge: '💬 New Message',
+        title: `Message from ${name}`,
+        content: message.content || 'Sent an attachment',
+        timestamp: message.timestamp || formatTimestamp(),
+        read: false,
+        action: {
+          label: 'Open Chat',
+          type: 'open_chat',
+          chatId: message.roomId || activeChatId
+        }
+      });
+    }
+  };
+
+  // Live polling for active conversation messages every 3s (ensures cross-device message arrival on Vercel)
+  useEffect(() => {
+    const t = tokenFromStorage() || user?.token || user?.id;
+    if (!t || !activeChatId) return;
+
+    const pollActiveMessages = () => {
+      fetch(`${API_BASE}/api/chats/${encodeURIComponent(activeChatId)}/messages`, {
+        headers: { Authorization: `Bearer ${t}` }
+      })
+        .then((r) => r.json())
+        .then((msgs) => {
+          if (Array.isArray(msgs) && msgs.length > 0) {
+            setChats((prev) => {
+              const currentChat = prev.find((c) => c.id === activeChatId);
+              const currentLength = currentChat?.messages?.length || 0;
+              if (msgs.length > currentLength) {
+                const latest = msgs[msgs.length - 1];
+                if (latest && latest.senderId !== user?.id) {
+                  notifyIncomingMessage(latest, currentChat?.user);
+                }
+                return prev.map((c) =>
+                  c.id === activeChatId
+                    ? {
+                        ...c,
+                        messages: msgs,
+                        lastMessage: latest || c.lastMessage
+                      }
+                    : c
+                );
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(() => {});
+    };
+
+    pollActiveMessages();
+    const interval = setInterval(pollActiveMessages, 3000);
+    return () => clearInterval(interval);
+  }, [activeChatId, user?.id]);
+
+  const seenMessageIdsRef = useRef(new Set());
+
+  // Live polling for user's conversations every 4s
+  useEffect(() => {
+    const t = tokenFromStorage() || user?.token || user?.id;
+    if (!t || !user?.id) return;
+
+    const pollChats = () => {
+      fetch(`${API_BASE}/api/chats`, {
+        headers: { Authorization: `Bearer ${t}` }
+      })
+        .then((r) => r.json())
+        .then((remoteChats) => {
+          if (Array.isArray(remoteChats) && remoteChats.length > 0) {
+            remoteChats.forEach((rc) => {
+              if (rc.lastMessage && rc.lastMessage.id && !seenMessageIdsRef.current.has(rc.lastMessage.id)) {
+                seenMessageIdsRef.current.add(rc.lastMessage.id);
+                if (rc.lastMessage.senderId !== user?.id && rc.id !== activeChatId) {
+                  notifyIncomingMessage(rc.lastMessage, rc.user);
+                }
+              }
+            });
+            setChats((prev) => {
+              return dedupeAndMergeChats([...remoteChats, ...prev], user?.id);
+            });
+          }
+        })
+        .catch(() => {});
+    };
+
+    pollChats();
+    const interval = setInterval(pollChats, 4000);
+    return () => clearInterval(interval);
+  }, [user?.id, activeChatId]);
 
   // Socket.IO connection
   const socketRef = useRef(null);
@@ -162,12 +268,18 @@ export function ChatProvider({ children, onAddPing }) {
   useEffect(() => {
     const token = user?.token || tokenFromStorage();
     if (!socketIOClient) return undefined;
-    const socket = socketIOClient(API_BASE, { auth: { token } });
+    const socket = socketIOClient(SOCKET_URL, { auth: { token } });
     socketRef.current = socket;
 
     socket.on('connect', () => {
       if (user?.id) {
         socket.emit('register_user', user.id);
+      }
+    });
+
+    socket.on('friend_request_responded', (payload) => {
+      if (payload?.chat) {
+        window.dispatchEvent(new CustomEvent('pingx:openServerChat', { detail: payload.chat }));
       }
     });
 
@@ -186,8 +298,12 @@ export function ChatProvider({ children, onAddPing }) {
 
     socket.on('message', (message) => {
       if (!message || !message.roomId) return;
-      setChats((prev) =>
-        prev.map((chat) => {
+      setChats((prev) => {
+        const found = prev.find((c) => c.id === message.roomId);
+        if (message.senderId !== user?.id) {
+          notifyIncomingMessage(message, found?.user);
+        }
+        return prev.map((chat) => {
           if (chat.id !== message.roomId) return chat;
           if (chat.messages?.some((m) => m.id === message.id)) return chat;
           const isCurrentActive = activeChatId === message.roomId;
@@ -198,8 +314,8 @@ export function ChatProvider({ children, onAddPing }) {
             unreadCount: isCurrentActive ? 0 : ((chat.unreadCount || 0) + (isIncoming ? 1 : 0)),
             lastMessage: { content: message.content, timestamp: message.timestamp, senderId: message.senderId }
           };
-        })
-      );
+        });
+      });
     });
 
     socket.on('message_read', ({ messageId }) => {
@@ -314,7 +430,8 @@ export function ChatProvider({ children, onAddPing }) {
     );
   };
 
-  const activeChat = chats.find((c) => c.id === activeChatId) || chats[0];
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+  const activeChat = chats.find((c) => c.id === activeChatId) || (isDesktop ? chats[0] : null);
 
   const deleteChat = (chatId) => {
     setChats((prev) => {
@@ -429,21 +546,31 @@ export function ChatProvider({ children, onAddPing }) {
       return updated;
     });
 
-    // Message saved locally and emitted live via Socket.IO
+    // 1. Emit live via Socket.IO if connected
     try {
       const socket = socketRef.current;
-      if (socket && currentChatId) {
-        const payload = { room: currentChatId, message: { ...newMessage, roomId: currentChatId } };
-        socket.emit('send_message', payload);
-        // persist to server
-        const t = tokenFromStorage();
-        fetch(`${API_BASE}/api/chats/${encodeURIComponent(currentChatId)}/messages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
-          body: JSON.stringify({ message: { ...newMessage, roomId: currentChatId } })
-        }).catch(() => {});
+      if (socket && socket.connected) {
+        socket.emit('send_message', { room: currentChatId, message: { ...newMessage, roomId: currentChatId } });
       }
     } catch {}
+
+    // 2. ALWAYS persist to server via HTTP (guarantees cross-device delivery on Vercel)
+    const t = tokenFromStorage() || user?.token || user?.id;
+    const currentChat = chats.find((c) => c.id === currentChatId);
+    const participants = currentChat?.participants || [user?.id, currentChat?.user?.id].filter(Boolean);
+    fetch(`${API_BASE}/api/chats/${encodeURIComponent(currentChatId)}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${t}`
+      },
+      body: JSON.stringify({ 
+        message: { ...newMessage, roomId: currentChatId },
+        participants
+      })
+    }).catch((err) => {
+      console.warn('Failed to save message to server:', err);
+    });
   };
 
   const addReaction = (messageId, emoji) => {
@@ -536,7 +663,7 @@ export function ChatProvider({ children, onAddPing }) {
     }
 
     // Otherwise create a new direct chat
-    const newChatId = `chat_${[currentUserId, targetUser.id].sort().join('_')}`;
+    const newChatId = `chat_${[currentUserId, targetUser.id].sort().join('--')}`;
     const newChat = {
       id: newChatId,
       type: 'direct',
@@ -552,7 +679,7 @@ export function ChatProvider({ children, onAddPing }) {
     setActiveChatId(newChatId);
 
     // Sync with backend API
-    const token = tokenFromStorage();
+    const token = tokenFromStorage() || user?.token || user?.id;
     if (token) {
       fetch(`${API_BASE}/api/chats`, {
         method: 'POST',

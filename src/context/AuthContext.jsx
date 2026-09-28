@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { CURRENT_USER, MOCK_USERS } from '../data/mockUsers';
+import { API_BASE, SOCKET_URL } from '../config/api';
+import { io as socketIOClient } from 'socket.io-client';
 
 const AuthContext = createContext();
 
 const DEMO_ACCOUNTS = [];
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001';
 const STORAGE_KEY = 'pingx_registered_accounts';
 const REQUESTS_KEY = 'pingx_friend_requests';
 
@@ -135,34 +136,96 @@ export function AuthProvider({ children }) {
   const openProfileSetup = () => setIsProfileSetupOpen(true);
   const closeProfileSetup = () => setIsProfileSetupOpen(false);
 
-  // Automatically fetch registered users from MongoDB Atlas on load without wiping local accounts
-  useEffect(() => {
-    fetch(`${API_BASE}/api/users`)
-      .then((r) => r.json())
-      .then((remote) => {
-        if (Array.isArray(remote) && remote.length > 0) {
-          setAccounts((prev) => {
-            const merged = [...remote];
-            (prev || []).forEach((localAcc) => {
-              if (
-                !isDemoOrDummy(localAcc) &&
-                !merged.some(
-                  (m) =>
-                    (m.id && m.id === localAcc.id) ||
-                    (m.email && localAcc.email && m.email.toLowerCase() === localAcc.email.toLowerCase()) ||
-                    (m.username && localAcc.username && m.username.toLowerCase() === localAcc.username.toLowerCase())
-                )
-              ) {
-                merged.push(localAcc);
-              }
-            });
-            safeStorage.setItem(STORAGE_KEY, merged);
-            return merged;
+  // Helper to fetch registered users from server and merge into local accounts
+  const refreshUsers = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/users`);
+      if (!res.ok) return [];
+      const remote = await res.json();
+      if (Array.isArray(remote) && remote.length > 0) {
+        setAccounts((prev) => {
+          const map = new Map();
+          (prev || []).forEach((localAcc) => {
+            if (!isDemoOrDummy(localAcc) && localAcc.id) {
+              map.set(localAcc.id, localAcc);
+            }
           });
+          remote.forEach((r) => {
+            if (!isDemoOrDummy(r) && r.id) {
+              const existing = map.get(r.id) || {};
+              map.set(r.id, { ...existing, ...r });
+            }
+          });
+          const merged = Array.from(map.values());
+          safeStorage.setItem(STORAGE_KEY, merged);
+          return merged;
+        });
+        return remote;
+      }
+    } catch (err) {}
+    return [];
+  }, []);
+
+  // Automatically fetch registered users on mount and periodically every 6 seconds
+  useEffect(() => {
+    refreshUsers();
+    const interval = setInterval(refreshUsers, 6000);
+    return () => clearInterval(interval);
+  }, [refreshUsers, user?.id]);
+
+  // Real-time WebSocket connection for cross-device sync of new users and friend requests
+  useEffect(() => {
+    let socket = null;
+    try {
+      socket = socketIOClient(SOCKET_URL);
+
+      if (user?.id) {
+        socket.emit('register_user', user.id);
+      }
+
+      // 1. Instantly discover newly registered members on other devices
+      socket.on('new_user_registered', (newMember) => {
+        if (!newMember || isDemoOrDummy(newMember)) return;
+        setAccounts((prev) => {
+          if (prev.some((a) => a.id === newMember.id || (a.email && a.email.toLowerCase() === newMember.email?.toLowerCase()))) {
+            return prev.map((a) => (a.id === newMember.id ? { ...a, ...newMember } : a));
+          }
+          const updated = [newMember, ...prev];
+          safeStorage.setItem(STORAGE_KEY, updated);
+          return updated;
+        });
+      });
+
+      // 2. Instantly receive incoming friend request
+      socket.on('friend_request_received', (req) => {
+        if (!req) return;
+        setFriendRequests((prev) => {
+          if (prev.some((r) => r.id === req.id)) return prev;
+          const updated = [req, ...prev];
+          safeStorage.setItem(REQUESTS_KEY, updated);
+          return updated;
+        });
+      });
+
+      // 3. Instantly unlock chat when a friend request is accepted
+      socket.on('friend_request_responded', (payload) => {
+        if (!payload) return;
+        const { requestId, status, chat } = payload;
+        setFriendRequests((prev) => {
+          const updated = prev.map((r) => (r.id === requestId ? { ...r, status } : r));
+          safeStorage.setItem(REQUESTS_KEY, updated);
+          return updated;
+        });
+        if (chat) {
+          window.dispatchEvent(new CustomEvent('pingx:openServerChat', { detail: chat }));
         }
-      })
-      .catch(() => {});
-  }, [user]);
+      });
+    } catch (sockErr) {}
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEY, accounts);
@@ -574,6 +637,7 @@ export function AuthProvider({ children }) {
       updateProfile,
       updateAvatar,
       friendRequests,
+      refreshUsers,
       searchUsers,
       sendFriendRequest,
       respondToFriendRequest,

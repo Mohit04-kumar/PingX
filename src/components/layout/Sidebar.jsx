@@ -35,8 +35,8 @@ export function Sidebar({
   const [isHovered, setIsHovered] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
-  // Expanded either when pinned open or hovered on desktop
-  const effectiveExpanded = isExpanded || isHovered;
+  // Expanded when opened on mobile drawer, or pinned open / hovered on desktop
+  const effectiveExpanded = isOpen || isExpanded || isHovered;
 
   const navItems = [
     { id: 'home', label: 'Command Center', icon: LayoutDashboard, action: () => setActiveTab('home') },
@@ -62,8 +62,8 @@ export function Sidebar({
         setIsMoreMenuOpen(false);
       }}
       className={`fixed top-0 left-0 bottom-0 z-40 flex flex-col justify-between transition-all duration-300 ease-in-out border-r shadow-xs bg-white border-[#e6e2f8] ${
-        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      } ${effectiveExpanded ? 'w-60 shadow-xl' : 'w-20'}`}
+        isOpen ? 'translate-x-0 w-72 max-w-[85vw] shadow-2xl' : '-translate-x-full lg:translate-x-0 ' + (effectiveExpanded ? 'w-60 shadow-xl' : 'w-20')
+      }`}
     >
       {/* Top Brand Header */}
       <div>
