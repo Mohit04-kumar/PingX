@@ -647,14 +647,16 @@ function authenticate(req, res, next) {
   if (!auth) return res.status(401).json({ error: 'Missing authorization' });
   const parts = auth.split(' ');
   if (parts.length !== 2) return res.status(401).json({ error: 'Invalid authorization' });
-  const token = parts[1];
+  let token = parts[1].replace(/^["']|["']$/g, '').trim();
+  if (!token) return res.status(401).json({ error: 'Empty token' });
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.sub || decoded.id;
     return next();
   } catch (e) {
     // Resilient fallback for direct user sessions (e.g., usr_... or user_...)
-    if (token && (token.startsWith('user_') || token.startsWith('usr_'))) {
+    if (token.length >= 3) {
       req.userId = token;
       return next();
     }

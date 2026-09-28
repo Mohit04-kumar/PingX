@@ -10,7 +10,15 @@ import { io as socketIOClient } from 'socket.io-client';
 function tokenFromStorage() {
   try {
     if (typeof window === 'undefined') return null;
-    return window.localStorage.getItem('pingx_token');
+    let t = window.localStorage.getItem('pingx_token');
+    if (!t || t === 'null' || t === 'undefined') return null;
+    try {
+      t = JSON.parse(t);
+    } catch {}
+    if (typeof t === 'string') {
+      return t.replace(/^["']|["']$/g, '').trim();
+    }
+    return t;
   } catch {
     return null;
   }

@@ -101,5 +101,13 @@ function deleteMessageFromChat(roomId, messageId, deleteType = 'forMe', userId =
   return false;
 }
 
+function createChat({ id, participants = [], type = 'direct', messages = [] }) {
+  const chatId = id || `chat_${Date.now()}`;
+  const chat = { id: chatId, participants, type, messages };
+  chats.unshift(chat);
+  saveState();
+  return chat;
+}
+
 module.exports = { accounts, friendRequests, chats, PRODUCT_DATABASE, searchProducts, addMessageToChat, deleteMessageFromChat, getChatsForUser, getMessages, createChat, saveState };
 

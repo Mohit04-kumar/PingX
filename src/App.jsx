@@ -117,6 +117,17 @@ function AppContent() {
     }
   }, [currentView, user]);
 
+  // Global tab switcher event listener
+  useEffect(() => {
+    const handleSwitchTab = (e) => {
+      if (e?.detail) {
+        setActiveTab(e.detail);
+      }
+    };
+    window.addEventListener('pingx:switchTab', handleSwitchTab);
+    return () => window.removeEventListener('pingx:switchTab', handleSwitchTab);
+  }, []);
+
   const handleStartChatWithUser = (targetUser) => {
     setActiveTab('chats');
     if (targetUser) {
@@ -166,7 +177,7 @@ function AppContent() {
           {activeTab === 'explore' && <ExploreView />}
           {activeTab === 'chats' && <ChatView />}
           {activeTab === 'shop' && <ShopView />}
-          {activeTab === 'connect' && <ConnectView />}
+          {activeTab === 'connect' && <ConnectView setActiveTab={setActiveTab} />}
           {activeTab === 'gallery' && <GalleryView />}
           {activeTab === 'profile' && <ProfileView />}
           {activeTab === 'settings' && <SettingsView />}

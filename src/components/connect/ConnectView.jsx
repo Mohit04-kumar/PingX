@@ -57,7 +57,11 @@ export function ConnectView({ setActiveTab }) {
     if (startDirectChat) {
       startDirectChat(targetUser);
     }
-    setActiveTab('chats');
+    if (typeof setActiveTab === 'function') {
+      setActiveTab('chats');
+    }
+    window.dispatchEvent(new CustomEvent('pingx:switchTab', { detail: 'chats' }));
+    window.dispatchEvent(new CustomEvent('pingx:startDirectChat', { detail: targetUser }));
   };
 
   return (
@@ -157,33 +161,47 @@ export function ConnectView({ setActiveTab }) {
                 {/* Action Buttons */}
                 <div className="pt-4 border-t space-y-2" style={{ borderColor: 'var(--border)' }}>
                   <div className="flex items-center gap-2">
-                    {status === 'accepted' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenChat(member)}
+                      className="flex-1 btn-primary py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-transform hover:scale-[1.02] active:scale-95"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" /> Message
+                    </button>
+
+                    {status === 'pending' ? (
                       <button
-                        onClick={() => handleOpenChat(member)}
-                        className="flex-1 btn-primary py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" /> Message
-                      </button>
-                    ) : status === 'pending' ? (
-                      <button
+                        type="button"
                         disabled
-                        className="flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border opacity-75"
+                        className="px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1 border opacity-75"
                         style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                        title="Friend request pending"
                       >
-                        <Clock className="w-3.5 h-3.5 text-amber-500" /> Pending Request
+                        <Clock className="w-3.5 h-3.5 text-amber-500" /> Pending
                       </button>
+                    ) : status === 'accepted' ? (
+                      <span 
+                        className="px-2.5 py-2 rounded-xl text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1"
+                        title="Connected Friends"
+                      >
+                        <Check className="w-3 h-3" /> Friends
+                      </span>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => handleSendRequest(member)}
-                        className="flex-1 btn-primary py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        className="px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1 border hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                        title="Send friend request"
                       >
-                        <UserPlus className="w-3.5 h-3.5" /> Connect
+                        <UserPlus className="w-3.5 h-3.5 text-[#7256c3]" /> Connect
                       </button>
                     )}
 
                     <button
+                      type="button"
                       onClick={() => openUserProfile(member)}
-                      className="px-3.5 py-2.5 rounded-xl text-xs font-bold border hover:bg-slate-100 transition-colors cursor-pointer"
+                      className="px-3.5 py-2.5 rounded-xl text-xs font-bold border hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                       style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
                       title="View Member Profile & Gallery"
                     >
