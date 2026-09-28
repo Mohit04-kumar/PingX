@@ -43,7 +43,7 @@ const isDemoOrDummy = (acc) => {
   if (id.startsWith('guest_') || id.startsWith('demo_')) return true;
   if (email.includes('demo') || username.includes('demo')) return true;
   if (email === 'rahul@example.com') return true;
-  const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus'];
+  const DUMMY_IDS = ['user_1', 'user_2', 'user_3', 'user_sneha', 'user_alex', 'user_priya', 'user_marcus', 'user_raman'];
   if (DUMMY_IDS.includes(id)) return true;
   return false;
 };
@@ -142,25 +142,26 @@ export function AuthProvider({ children }) {
       const res = await fetch(`${API_BASE}/api/users`);
       if (!res.ok) return [];
       const remote = await res.json();
-      if (Array.isArray(remote) && remote.length > 0) {
-        setAccounts((prev) => {
-          const map = new Map();
-          (prev || []).forEach((localAcc) => {
-            if (!isDemoOrDummy(localAcc) && localAcc.id) {
-              map.set(localAcc.id, localAcc);
+      if (Array.isArray(remote)) {
+        const cleanRemote = remote.filter((r) => !isDemoOrDummy(r) && r.id);
+        setAccounts(cleanRemote);
+        safeStorage.setItem(STORAGE_KEY, cleanRemote);
+
+        // If the active user account was deleted on the server, cleanly logout
+        setUser((currentUser) => {
+          if (currentUser && !currentUser.isGuest) {
+            const stillExists = cleanRemote.some((u) => u.id === currentUser.id);
+            if (!stillExists) {
+              safeStorage.removeItem('pingx_active_user');
+              safeStorage.removeItem('pingx_token');
+              setIsAuthenticated(false);
+              return null;
             }
-          });
-          remote.forEach((r) => {
-            if (!isDemoOrDummy(r) && r.id) {
-              const existing = map.get(r.id) || {};
-              map.set(r.id, { ...existing, ...r });
-            }
-          });
-          const merged = Array.from(map.values());
-          safeStorage.setItem(STORAGE_KEY, merged);
-          return merged;
+          }
+          return currentUser;
         });
-        return remote;
+
+        return cleanRemote;
       }
     } catch (err) {}
     return [];
@@ -237,20 +238,18 @@ export function AuthProvider({ children }) {
 
   // Sync friend requests with server for active user
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setFriendRequests([]);
+      safeStorage.removeItem(REQUESTS_KEY);
+      return;
+    }
     const fetchRequests = () => {
       fetch(`${API_BASE}/api/friend-requests/${user.id}`)
         .then((r) => r.json())
         .then((remote) => {
           if (Array.isArray(remote)) {
-            setFriendRequests((prev) => {
-              const map = new Map();
-              (prev || []).forEach((r) => map.set(r.id, r));
-              remote.forEach((r) => map.set(r.id, { ...map.get(r.id), ...r }));
-              const merged = Array.from(map.values());
-              safeStorage.setItem(REQUESTS_KEY, merged);
-              return merged;
-            });
+            setFriendRequests(remote);
+            safeStorage.setItem(REQUESTS_KEY, remote);
           }
         })
         .catch(() => {});
