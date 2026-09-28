@@ -184,7 +184,7 @@ export function ChatProvider({ children, onAddPing }) {
     }
   };
 
-  // Live polling for active conversation messages every 3s (ensures cross-device message arrival on Vercel)
+  // Live fast polling for active conversation messages every 1s (ensures immediate cross-device message arrival)
   useEffect(() => {
     const t = tokenFromStorage() || user?.token || user?.id;
     if (!t || !activeChatId) return;
@@ -199,9 +199,12 @@ export function ChatProvider({ children, onAddPing }) {
             setChats((prev) => {
               const currentChat = prev.find((c) => c.id === activeChatId);
               const currentLength = currentChat?.messages?.length || 0;
-              if (msgs.length > currentLength) {
+              const currentMsgIds = new Set((currentChat?.messages || []).map((m) => m.id));
+              const hasNew = msgs.some((m) => !currentMsgIds.has(m.id));
+
+              if (hasNew || msgs.length !== currentLength) {
                 const latest = msgs[msgs.length - 1];
-                if (latest && latest.senderId !== user?.id) {
+                if (latest && latest.senderId !== user?.id && !currentMsgIds.has(latest.id)) {
                   notifyIncomingMessage(latest, currentChat?.user);
                 }
                 return prev.map((c) =>
@@ -222,13 +225,13 @@ export function ChatProvider({ children, onAddPing }) {
     };
 
     pollActiveMessages();
-    const interval = setInterval(pollActiveMessages, 3000);
+    const interval = setInterval(pollActiveMessages, 1000);
     return () => clearInterval(interval);
   }, [activeChatId, user?.id]);
 
   const seenMessageIdsRef = useRef(new Set());
 
-  // Live polling for user's conversations every 4s
+  // Live polling for user's conversations every 2s
   useEffect(() => {
     const t = tokenFromStorage() || user?.token || user?.id;
     if (!t || !user?.id) return;
@@ -257,9 +260,38 @@ export function ChatProvider({ children, onAddPing }) {
     };
 
     pollChats();
-    const interval = setInterval(pollChats, 4000);
+    const interval = setInterval(pollChats, 2000);
     return () => clearInterval(interval);
   }, [user?.id, activeChatId]);
+
+  // Automatically enrich partner profile info (name, avatar, username) from registered accounts
+  useEffect(() => {
+    if (!accounts || accounts.length === 0) return;
+    setChats((prev) => {
+      let changed = false;
+      const updated = prev.map((c) => {
+        if (c.type === 'direct' || !c.type) {
+          const partnerId = c.user?.id || (c.participants || []).find((p) => p !== user?.id);
+          const acc = accounts.find((a) => a.id === partnerId || (a.username && a.username === c.user?.username));
+          if (acc && (!c.user?.name || c.user.name === 'PingX Member' || c.user.name === 'Contact' || !c.user.avatar)) {
+            changed = true;
+            return {
+              ...c,
+              user: {
+                ...c.user,
+                ...acc,
+                name: acc.name || c.user?.name,
+                username: acc.username || c.user?.username,
+                avatar: acc.avatar || c.user?.avatar
+              }
+            };
+          }
+        }
+        return c;
+      });
+      return changed ? updated : prev;
+    });
+  }, [accounts, user?.id]);
 
   // Socket.IO connection
   const socketRef = useRef(null);

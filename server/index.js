@@ -34,12 +34,25 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
+// Helper to check if Mongoose is connected (declared as hoisted function)
+function isDbConnected() {
+  try {
+    const mongoose = require('mongoose');
+    return mongoose.connection.readyState === 1;
+  } catch (e) {
+    return false;
+  }
+}
+
 // Cached MongoDB connection assurance for Vercel serverless functions
 let serverlessDbPromise = null;
 const ensureServerlessDb = async () => {
   if (isDbConnected()) return true;
   if (!serverlessDbPromise) {
-    serverlessDbPromise = connectDB();
+    serverlessDbPromise = connectDB().catch((err) => {
+      serverlessDbPromise = null;
+      console.warn('Serverless DB connect warning:', err.message);
+    });
   }
   return serverlessDbPromise;
 };
@@ -54,7 +67,12 @@ app.use(async (req, res, next) => {
 });
 
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+let io = null;
+try {
+  io = new Server(server, { cors: { origin: '*' } });
+} catch (e) {
+  io = { to: () => ({ emit: () => {} }), emit: () => {}, on: () => {} };
+}
 const activeUsers = new Map();
 
 // Secure In-Memory Cache for Phone OTP Generation & Verification
@@ -70,12 +88,6 @@ setInterval(() => {
     }
   }
 }, 2 * 60 * 1000);
-
-// Helper to check if Mongoose is connected
-const isDbConnected = () => {
-  const mongoose = require('mongoose');
-  return mongoose.connection.readyState === 1;
-};
 
 // ---------------------------------------------------------------------------
 // REST API Endpoints

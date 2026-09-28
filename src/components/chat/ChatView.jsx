@@ -117,8 +117,32 @@ export function ChatView() {
       })
     : [];
 
+  // Dynamic helper to resolve partner profile even if local chat record is incomplete
+  const getChatPartner = (chat) => {
+    if (!chat) return null;
+    if (chat.user?.name && chat.user.name !== 'Contact' && chat.user.name !== 'PingX Member') {
+      return chat.user;
+    }
+    const partnerId = chat.user?.id || (chat.participants || []).find((p) => p !== user?.id);
+    if (partnerId) {
+      const acc = accounts.find((a) => a.id === partnerId || a.username === partnerId);
+      if (acc) return { ...chat.user, ...acc };
+    }
+    return chat.user || null;
+  };
+
+  const getChatDisplayName = (chat) => {
+    if (!chat) return 'Friend';
+    if (chat.type === 'group' || chat.isGroup) return chat.group?.name || 'Group Chat';
+    const partner = getChatPartner(chat);
+    return partner?.name || partner?.username || 'Friend';
+  };
+
+  const activePartner = getChatPartner(activeChat);
+  const activeDisplayName = getChatDisplayName(activeChat);
+
   const filteredChats = chats.filter((c) => {
-    const name = c.user?.name || c.group?.name || '';
+    const name = getChatDisplayName(c);
     const matchesSearch = name.toLowerCase().includes(chatSearch.toLowerCase());
     const matchesType = activeTab === 'all' || (activeTab === 'direct' && c.type === 'direct') || (activeTab === 'group' && c.type === 'group');
     return matchesSearch && matchesType;
@@ -410,6 +434,8 @@ export function ChatView() {
           ) : (
             filteredChats.map((chat) => {
               const isActive = chat.id === activeChatId;
+              const itemDisplayName = getChatDisplayName(chat);
+              const itemPartner = getChatPartner(chat);
               return (
                 <div
                   key={chat.id}
@@ -426,17 +452,17 @@ export function ChatView() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (chat.user) openUserProfile(chat.user);
+                        if (itemPartner) openUserProfile(itemPartner);
                       }}
                       className="relative shrink-0 cursor-pointer hover:scale-105 transition-transform"
-                      title={chat.user ? `View ${chat.user.name}'s Profile` : undefined}
+                      title={itemPartner ? `View ${itemDisplayName}'s Profile` : undefined}
                     >
                       <Avatar 
-                        src={chat.user?.avatar || chat.group?.avatar} 
-                        name={chat.user?.name || chat.group?.name || 'Contact'} 
+                        src={itemPartner?.avatar || chat.group?.avatar} 
+                        name={itemDisplayName} 
                         size="md"
-                        showOnline={chat.user?.status === 'online'}
-                        online={chat.user?.status === 'online'}
+                        showOnline={itemPartner?.status === 'online'}
+                        online={itemPartner?.status === 'online'}
                         className="border"
                         style={{ borderColor: 'var(--border)' }}
                       />
@@ -444,7 +470,7 @@ export function ChatView() {
 
                     <div className="truncate">
                       <h5 className="text-xs font-bold flex items-center gap-1.5 truncate" style={{ color: 'var(--text-primary)' }}>
-                        {chat.user?.name || chat.group?.name}
+                        {itemDisplayName}
                         {chat.pinned && <Pin className="w-3 h-3" style={{ color: 'var(--accent)' }} />}
                       </h5>
                       <p className="text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>
@@ -531,16 +557,16 @@ export function ChatView() {
                 <div 
                   className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group hover:opacity-95 transition-opacity"
                   onClick={() => {
-                    if (activeChat?.user) {
-                      openUserProfile(activeChat.user);
+                    if (activePartner) {
+                      openUserProfile(activePartner);
                     }
                   }}
-                  title={activeChat?.user ? `View ${activeChat.user.name}'s Profile` : undefined}
+                  title={activePartner ? `View ${activeDisplayName}'s Profile` : undefined}
                 >
                   <div className="relative">
                     <Avatar
-                      src={activeChat?.user?.avatar || activeChat?.group?.avatar}
-                      name={activeChat?.user?.name || activeChat?.group?.name || 'Contact'}
+                      src={activePartner?.avatar || activeChat?.group?.avatar}
+                      name={activeDisplayName}
                       size="md"
                       className="border transition-transform group-hover:scale-105"
                       style={{ borderColor: 'var(--accent)' }}
@@ -549,8 +575,8 @@ export function ChatView() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold flex items-center gap-2 group-hover:text-[#7256c3] transition-colors" style={{ color: 'var(--text-primary)' }}>
-                      <span>{activeChat?.user?.name || activeChat?.group?.name}</span>
-                    {activeChat?.user && (
+                      <span>{activeDisplayName}</span>
+                    {activePartner && (
                       <span className="text-[10px] font-semibold text-[#7256c3] bg-violet-50 px-2 py-0.5 rounded-full">
                         View Profile ›
                       </span>
@@ -665,7 +691,7 @@ export function ChatView() {
               <Smile className="w-10 h-10 opacity-30" style={{ color: 'var(--accent)' }} />
               <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>No messages yet</p>
               <p className="text-[11px] max-w-xs" style={{ color: 'var(--text-secondary)' }}>
-                Say hello and start chatting with {activeChat?.user?.name || 'your contact'}!
+                Say hello and start chatting with {activeDisplayName}!
               </p>
             </div>
           ) : (
@@ -674,7 +700,7 @@ export function ChatView() {
               return (
                 <div key={`${msg.id || 'msg'}_${idx}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 group max-w-full`}>
                   <div className={`flex items-center gap-1.5 text-[10px] ${isMe ? 'flex-row-reverse' : ''}`} style={{ color: 'var(--text-muted)' }}>
-                    <span className="font-semibold">{isMe ? 'You' : msg.senderName}</span>
+                    <span className="font-semibold">{isMe ? 'You' : (msg.senderName || activeDisplayName)}</span>
                     <span>•</span>
                     <span>{msg.timestamp}</span>
                     {isMe && <CheckCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" title="Read" />}
@@ -883,7 +909,7 @@ export function ChatView() {
                   handleSend(e);
                 }
               }}
-              placeholder={`Message ${activeChat?.user?.name || activeChat?.group?.name || 'member'}...`}
+              placeholder={`Message ${activeDisplayName}...`}
               className="w-full bg-transparent text-xs outline-none"
               style={{ color: 'var(--text-primary)' }}
             />

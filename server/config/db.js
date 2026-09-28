@@ -8,11 +8,13 @@ try {
   console.warn('⚠️ Could not set custom DNS servers:', e.message);
 }
 
+const DEFAULT_ATLAS_URI = 'mongodb+srv://mrmohitkumar004_db_user:dk50ILaPswZFzDK9@cluster0.hqfkwu6.mongodb.net/pingx?retryWrites=true&w=majority&appName=Cluster0';
+
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/pingx';
+  const uri = process.env.MONGODB_URI || DEFAULT_ATLAS_URI;
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 15000,
+      serverSelectionTimeoutMS: 5000,
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);
