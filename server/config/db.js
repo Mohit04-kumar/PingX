@@ -10,15 +10,16 @@ if (!process.env.VERCEL) {
   }
 }
 
-const DEFAULT_ATLAS_URI = 'mongodb+srv://mrmohitkumar004_db_user:dk50ILaPswZFzDK9@cluster0.hqfkwu6.mongodb.net/pingx?retryWrites=true&w=majority&appName=Cluster0';
+// Direct replica set seedlist URI - eliminates cloud/serverless SRV DNS lookup issues permanently
+const DIRECT_REPLICA_URI = 'mongodb://mrmohitkumar004_db_user:dk50ILaPswZFzDK9@ac-hytngpj-shard-00-00.hqfkwu6.mongodb.net:27017,ac-hytngpj-shard-00-01.hqfkwu6.mongodb.net:27017,ac-hytngpj-shard-00-02.hqfkwu6.mongodb.net:27017/pingx?ssl=true&replicaSet=atlas-o7uobt-shard-0&authSource=admin&retryWrites=true&w=majority';
 
 let lastError = null;
 
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI || DEFAULT_ATLAS_URI;
+  const uri = process.env.MONGODB_DIRECT_URI || DIRECT_REPLICA_URI;
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 6000,
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);
