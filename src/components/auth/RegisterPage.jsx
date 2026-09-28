@@ -19,7 +19,7 @@ import {
   Check
 } from 'lucide-react';
 import { PingXLogo } from '../common/PingXLogo';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, MALE_AVATARS, FEMALE_AVATARS } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { authApi } from '../../services/authApi';
 
@@ -31,6 +31,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [gender, setGender] = useState('Male'); // 'Male' | 'Female' | 'Other' | 'Prefer not to say'
+  const [selectedAvatar, setSelectedAvatar] = useState(MALE_AVATARS[0]);
   const [dob, setDob] = useState('2000-01-15');
   const [phoneCountry, setPhoneCountry] = useState('+91');
   const [phone, setPhone] = useState('');
@@ -129,6 +130,7 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
         gender,
         dob,
         password,
+        avatar: selectedAvatar,
         autoLogin: false
       });
 
@@ -307,7 +309,10 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => setGender(item.id)}
+                          onClick={() => {
+                            setGender(item.id);
+                            setSelectedAvatar(item.id === 'Female' ? FEMALE_AVATARS[0] : MALE_AVATARS[0]);
+                          }}
                           className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition-all text-left truncate cursor-pointer ${
                             gender === item.id
                               ? 'border-[#7256c3] bg-violet-50 text-[#7256c3] font-bold ring-1 ring-[#7256c3]'
@@ -337,6 +342,45 @@ export function RegisterPage({ onNavigateToLanding, onNavigateToLogin, onAuthSuc
                         required
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* 3. Gender-Aware Profile Face Avatar Selector */}
+                <div className="space-y-2 pt-1 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>Assigned Face Avatar</span>
+                      <span className="text-[10px] text-violet-700 font-bold bg-violet-50 px-2 py-0.5 rounded-full border border-violet-200">
+                        {gender === 'Female' ? '👩 Female Faces' : '👨 Male Faces'}
+                      </span>
+                    </label>
+                    <span className="text-[10px] text-slate-400">Tap to choose your face</span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-1 scrollbar-none">
+                    {(gender === 'Female' ? FEMALE_AVATARS : MALE_AVATARS).map((url, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedAvatar(url)}
+                        className={`relative shrink-0 rounded-2xl p-1 transition-all cursor-pointer ${
+                          selectedAvatar === url
+                            ? 'ring-2 ring-[#7256c3] bg-violet-100/60 scale-105 shadow-xs'
+                            : 'border border-slate-200 hover:border-violet-300 opacity-75 hover:opacity-100'
+                        }`}
+                      >
+                        <img
+                          src={url}
+                          alt="Face Option"
+                          className="w-12 h-12 rounded-xl object-cover bg-slate-100"
+                        />
+                        {selectedAvatar === url && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#7256c3] text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-xs">
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
 

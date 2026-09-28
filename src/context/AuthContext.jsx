@@ -48,6 +48,35 @@ const isDemoOrDummy = (acc) => {
   return false;
 };
 
+export const MALE_AVATARS = [
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&top=theCaesar',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Jack&top=shortFlat'
+];
+
+export const FEMALE_AVATARS = [
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka&top=straight01'
+];
+
+export function getGenderAvatar(username = '', gender = 'Male') {
+  const g = String(gender || '').trim().toLowerCase();
+  const seed = String(username || 'user').toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash << 5) - hash + seed.charCodeAt(i);
+  const idx = Math.abs(hash);
+
+  if (g.startsWith('f')) {
+    return FEMALE_AVATARS[idx % FEMALE_AVATARS.length];
+  }
+  return MALE_AVATARS[idx % MALE_AVATARS.length];
+}
+
 export function AuthProvider({ children }) {
   const [accounts, setAccounts] = useState(() => {
     const saved = safeStorage.getItem(STORAGE_KEY, []);
@@ -351,7 +380,7 @@ export function AuthProvider({ children }) {
       gender: gender || 'Prefer not to say',
       dob: dob || '',
       password: password || '',
-      avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanUsername)}`,
+      avatar: avatar || getGenderAvatar(cleanUsername, gender),
       bio: bio || 'PingX Member',
       role: 'Member',
       location: location || 'India',
