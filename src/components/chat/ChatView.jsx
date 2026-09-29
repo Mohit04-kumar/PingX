@@ -210,8 +210,11 @@ export function ChatView() {
     activeMessages.push(msg);
   }
 
-  // Scroll down instantly when switching chat
+  // Scroll down instantly when switching chat and ensure window stays at top
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+    }
     if (activeChatId) {
       const timer = setTimeout(() => {
         scrollToBottom('auto', true);
@@ -371,14 +374,14 @@ export function ChatView() {
 
   return (
     <div 
-      className="flex flex-col lg:flex-row flex-1 h-full min-h-0 rounded-3xl overflow-hidden border shadow-sm relative transition-colors duration-200"
+      className="flex flex-col md:flex-row flex-1 w-full h-full min-h-0 rounded-2xl sm:rounded-3xl overflow-hidden border shadow-sm relative transition-colors duration-200"
       style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
     >
       <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*,video/*" className="hidden" />
 
       {/* Left Conversations Sidebar */}
       <div 
-        className={`${activeChatId ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 border-r flex-col transition-colors duration-200 bg-white dark:bg-slate-900 h-full`}
+        className={`${activeChatId ? 'hidden md:flex' : 'flex'} w-full md:w-72 lg:w-80 border-r flex-col transition-colors duration-200 bg-white dark:bg-slate-900 h-full min-h-0 shrink-0`}
         style={{ borderColor: 'var(--border)' }}
       >
         {/* Header */}
@@ -622,7 +625,7 @@ export function ChatView() {
 
       {/* Right Chat Window */}
       <div 
-        className={`${activeChatId ? 'flex' : 'hidden lg:flex'} flex-1 flex-col relative h-full min-h-0 overflow-hidden`} 
+        className={`${activeChatId ? 'flex' : 'hidden md:flex'} flex-1 flex-col relative h-full min-h-0 overflow-hidden`} 
         style={{ backgroundColor: 'var(--bg-subtle)' }}
       >
         {!activeChat ? (
@@ -652,7 +655,7 @@ export function ChatView() {
                 <button
                   type="button"
                   onClick={() => setActiveChatId(null)}
-                  className="lg:hidden p-2 -ml-1 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer transition-colors"
+                  className="md:hidden p-2 -ml-1 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer transition-colors"
                   title="Back to conversations"
                 >
                   <ArrowLeft className="w-5 h-5" />

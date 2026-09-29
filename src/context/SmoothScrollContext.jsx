@@ -76,13 +76,18 @@ export function SmoothScrollProvider({ children, currentView }) {
     };
   }, []);
 
-  // Reset scroll to top cleanly upon view change (Landing -> Login -> Dashboard)
+  // Reset scroll to top cleanly upon view change and pause Lenis inside the app
   useEffect(() => {
     if (lenisRef.current) {
-      lenisRef.current.scrollTo(0, { immediate: true });
-    } else {
-      window.scrollTo(0, 0);
+      if (currentView === 'app') {
+        lenisRef.current.stop();
+        lenisRef.current.scrollTo(0, { immediate: true });
+      } else {
+        lenisRef.current.start();
+        lenisRef.current.scrollTo(0, { immediate: true });
+      }
     }
+    window.scrollTo(0, 0);
   }, [currentView]);
 
   const scrollTo = (target, options = {}) => {
