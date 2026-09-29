@@ -877,7 +877,22 @@ app.get('/api/chats/:id/messages', authenticate, async (req, res) => {
       msgs = msgs.filter((m) => !Array.isArray(m.deletedFor) || !m.deletedFor.includes(req.userId));
     }
 
-    res.json(msgs);
+    // Deduplicate any historical duplicate messages that were previously saved in the DB
+    const seenIds = new Set();
+    const seenSigs = new Set();
+    const cleanMsgs = [];
+    for (const m of msgs) {
+      if (!m) continue;
+      const idKey = m.id ? String(m.id) : null;
+      const sigKey = `${m.senderId || ''}_${m.content || ''}_${m.timestamp || ''}`;
+      if (idKey && seenIds.has(idKey)) continue;
+      if (sigKey && seenSignatures.has(sigKey)) continue;
+      if (idKey) seenIds.add(idKey);
+      seenSignatures.add(sigKey);
+      cleanMsgs.push(m);
+    }
+
+    res.json(cleanMsgs);
   } catch (err) {
     console.error('Error fetching messages:', err);
     res.status(500).json({ error: 'Failed to fetch messages' });
@@ -977,9 +992,16 @@ app.post('/api/chats/:id/messages', authenticate, async (req, res) => {
         if (!existing.participants || existing.participants.length < 2) {
           existing.participants = Array.from(new Set([...(existing.participants || []), ...targetParticipants]));
         }
-        existing.messages.push(message);
-        existing.lastMessage = message;
-        await existing.save();
+        // Deduplicate: check by id or sender+content+timestamp
+        const alreadyHas = (existing.messages || []).some(
+          (m) => (message.id && m.id === message.id) ||
+                 (m.senderId === message.senderId && m.content === message.content && m.timestamp === message.timestamp)
+        );
+        if (!alreadyHas) {
+          existing.messages.push(message);
+          existing.lastMessage = message;
+          await existing.save();
+        }
       }
     } else {
       let existing = data.chats.find((c) => c.id === chatId);
@@ -993,13 +1015,6 @@ app.post('/api/chats/:id/messages', authenticate, async (req, res) => {
 
     try {
       io.to(chatId).emit('message', message);
-      targetParticipants.forEach((pid) => {
-        if (pid !== req.userId) {
-          io.to(`user_${pid}`).emit('message', message);
-          const sock = activeUsers.get(pid);
-          if (sock) io.to(sock).emit('message', message);
-        }
-      });
     } catch {}
 
     res.json({ success: true });
@@ -1244,14 +1259,26 @@ io.on('connection', (socket) => {
 
     if (isDbConnected()) {
       try {
-        await Chat.findOneAndUpdate(
-          { id: room },
-          {
-            $push: { messages: message },
-            $set: { lastMessage: message }
-          },
-          { upsert: true, new: true }
-        );
+        const existing = await Chat.findOne({ id: room });
+        if (!existing) {
+          await Chat.create({
+            id: room,
+            type: 'direct',
+            participants: message.roomId?.startsWith('chat_') ? message.roomId.replace(/^chat_/, '').split('--') : [],
+            messages: [message],
+            lastMessage: message
+          });
+        } else {
+          const already = (existing.messages || []).some(
+            (m) => (message.id && m.id === message.id) ||
+                   (m.senderId === message.senderId && m.content === message.content && m.timestamp === message.timestamp)
+          );
+          if (!already) {
+            existing.messages.push(message);
+            existing.lastMessage = message;
+            await existing.save();
+          }
+        }
       } catch (err) {
         console.error('Socket message persist error:', err);
       }
@@ -1259,7 +1286,8 @@ io.on('connection', (socket) => {
       data.addMessageToChat(room, message);
     }
 
-    io.to(room).emit('message', message);
+    // Broadcast only to other sockets in the room (sender already has it optimistically)
+    socket.to(room).emit('message', message);
   });
 
   socket.on('typing', ({ room, userId, username }) => {

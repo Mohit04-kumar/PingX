@@ -56,7 +56,11 @@ export function MainLayout({ activeTab, setActiveTab, onNavigateToLanding, onPos
         />
 
         {/* Dynamic Page Content */}
-        <main className="flex-1 p-3 sm:p-5 md:p-6 max-w-7xl mx-auto w-full">
+        <main className={`flex-1 w-full max-w-7xl mx-auto ${
+          activeTab === 'chats'
+            ? 'p-2 sm:p-3 md:p-4 h-[calc(100dvh-4rem)] overflow-hidden flex flex-col'
+            : 'p-3 sm:p-5 md:p-6'
+        }`}>
           {children}
         </main>
 

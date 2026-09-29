@@ -442,3 +442,29 @@ html.theme-light .bg-black\/90 {
   transform: translateY(1px);
 }
 
+/* ─────────────────────────────────────────────────────
+   CHAT CONTAINER SLEEK SCROLLBAR
+───────────────────────────────────────────────────── */
+.custom-chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(114, 86, 195, 0.3) transparent;
+}
+
+.custom-chat-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-chat-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(114, 86, 195, 0.25);
+  border-radius: 9999px;
+}
+
+.custom-chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(114, 86, 195, 0.5);
+}
+

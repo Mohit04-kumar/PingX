@@ -42,29 +42,46 @@ function dedupeAndMergeChats(rawChats, currentUserId) {
       partnerKey = partnerUsername || partnerName || partnerId || chat.id;
     }
 
+    // Deduplicate messages within the current chat object itself
+    const cleanChatMsgs = [];
+    const localIds = new Set();
+    const localSigs = new Set();
+    for (const msg of (chat.messages || [])) {
+      if (!msg) continue;
+      const mId = msg.id ? String(msg.id) : null;
+      const sig = `${msg.senderId || ''}_${msg.content || ''}_${msg.timestamp || ''}`;
+      if (mId && localIds.has(mId)) continue;
+      if (localSigs.has(sig)) continue;
+      if (mId) localIds.add(mId);
+      localSigs.add(sig);
+      cleanChatMsgs.push(msg);
+    }
+    const cleanChat = { ...chat, messages: cleanChatMsgs };
+
     if (!mergedMap.has(partnerKey)) {
-      mergedMap.set(partnerKey, { ...chat });
+      mergedMap.set(partnerKey, cleanChat);
     } else {
       const existing = mergedMap.get(partnerKey);
-      const existingMsgIds = new Set((existing.messages || []).map((m) => m.id));
-      const existingContents = new Set((existing.messages || []).map((m) => `${m.content}_${m.timestamp}`));
+      const existingMsgIds = new Set((existing.messages || []).map((m) => m.id).filter(Boolean));
+      const existingContents = new Set((existing.messages || []).map((m) => `${m.senderId || ''}_${m.content || ''}_${m.timestamp || ''}`));
       const combinedMsgs = [...(existing.messages || [])];
 
-      for (const msg of (chat.messages || [])) {
-        const signature = `${msg.content}_${msg.timestamp}`;
-        if (!existingMsgIds.has(msg.id) && !existingContents.has(signature)) {
+      for (const msg of cleanChatMsgs) {
+        const signature = `${msg.senderId || ''}_${msg.content || ''}_${msg.timestamp || ''}`;
+        const msgId = msg.id ? String(msg.id) : null;
+        if ((!msgId || !existingMsgIds.has(msgId)) && !existingContents.has(signature)) {
           combinedMsgs.push(msg);
-          existingMsgIds.add(msg.id);
+          if (msgId) existingMsgIds.add(msgId);
           existingContents.add(signature);
         }
       }
 
-      const bestUser = (existing.user?.username && existing.user?.avatar) ? existing.user : (chat.user || existing.user);
-      const bestLastMessage = combinedMsgs.length > 0 ? combinedMsgs[combinedMsgs.length - 1] : (existing.lastMessage || chat.lastMessage);
+      const bestUser = (existing.user?.username && existing.user?.avatar) ? existing.user : (cleanChat.user || existing.user);
+      const bestLastMessage = combinedMsgs.length > 0 ? combinedMsgs[combinedMsgs.length - 1] : (existing.lastMessage || cleanChat.lastMessage);
 
       mergedMap.set(partnerKey, {
         ...existing,
-        id: existing.id || chat.id,
+        id: existing.id || cleanChat.id,
         user: bestUser,
         messages: combinedMsgs,
         lastMessage: bestLastMessage
@@ -206,30 +223,50 @@ export function ChatProvider({ children, onAddPing }) {
       })
         .then((r) => r.json())
         .then((msgs) => {
-          if (Array.isArray(msgs) && msgs.length > 0) {
+          if (Array.isArray(msgs)) {
             const visibleMsgs = msgs.filter((m) => !Array.isArray(m.deletedFor) || !m.deletedFor.includes(user?.id));
+            
+            // Deduplicate incoming polled messages by ID and signature
+            const cleanMsgs = [];
+            const seenIds = new Set();
+            const seenSigs = new Set();
+            for (const m of visibleMsgs) {
+              if (!m) continue;
+              const idKey = m.id ? String(m.id) : null;
+              const sigKey = `${m.senderId || ''}_${m.content || ''}_${m.timestamp || ''}`;
+              if (idKey && seenIds.has(idKey)) continue;
+              if (seenSigs.has(sigKey)) continue;
+              if (idKey) seenIds.add(idKey);
+              seenSigs.add(sigKey);
+              cleanMsgs.push(m);
+            }
+
             setChats((prev) => {
               const currentChat = prev.find((c) => c.id === activeChatId);
-              const currentLength = currentChat?.messages?.length || 0;
-              const currentMsgIds = new Set((currentChat?.messages || []).map((m) => m.id));
-              const hasNew = visibleMsgs.some((m) => !currentMsgIds.has(m.id));
+              if (!currentChat) return prev;
 
-              if (hasNew || visibleMsgs.length !== currentLength) {
-                const latest = visibleMsgs[visibleMsgs.length - 1];
-                if (latest && latest.senderId !== user?.id && !currentMsgIds.has(latest.id)) {
-                  notifyIncomingMessage(latest, currentChat?.user);
-                }
-                return prev.map((c) =>
-                  c.id === activeChatId
-                    ? {
-                        ...c,
-                        messages: visibleMsgs,
-                        lastMessage: latest || c.lastMessage
-                      }
-                    : c
-                );
+              const currentMessages = currentChat.messages || [];
+              const currentIds = new Set(currentMessages.map((m) => m.id).filter(Boolean));
+              const currentSigs = new Set(currentMessages.map((m) => `${m.senderId || ''}_${m.content || ''}_${m.timestamp || ''}`));
+
+              const hasNew = cleanMsgs.some((m) => !currentIds.has(m.id) && !currentSigs.has(`${m.senderId || ''}_${m.content || ''}_${m.timestamp || ''}`));
+              if (!hasNew && currentMessages.length === cleanMsgs.length) {
+                return prev; // Nothing changed, skip update to prevent re-renders and scroll fighting
               }
-              return prev;
+
+              const latest = cleanMsgs[cleanMsgs.length - 1];
+              if (latest && latest.senderId !== user?.id && !currentIds.has(latest.id) && !currentSigs.has(`${latest.senderId || ''}_${latest.content || ''}_${latest.timestamp || ''}`)) {
+                notifyIncomingMessage(latest, currentChat?.user);
+              }
+              return prev.map((c) =>
+                c.id === activeChatId
+                  ? {
+                      ...c,
+                      messages: cleanMsgs,
+                      lastMessage: latest || c.lastMessage
+                    }
+                  : c
+              );
             });
           }
         })
@@ -342,14 +379,24 @@ export function ChatProvider({ children, onAddPing }) {
 
     socket.on('message', (message) => {
       if (!message || !message.roomId) return;
+      const msgSig = `${message.senderId || ''}_${message.content || ''}_${message.timestamp || ''}`;
+
       setChats((prev) => {
         const found = prev.find((c) => c.id === message.roomId);
-        if (message.senderId !== user?.id) {
-          notifyIncomingMessage(message, found?.user);
-        }
         return prev.map((chat) => {
           if (chat.id !== message.roomId) return chat;
-          if (chat.messages?.some((m) => m.id === message.id)) return chat;
+          
+          // Strict deduplication by ID or by sender+content+timestamp signature
+          const alreadyExists = (chat.messages || []).some(
+            (m) => (message.id && m.id === message.id) ||
+                   (`${m.senderId || ''}_${m.content || ''}_${m.timestamp || ''}` === msgSig)
+          );
+          if (alreadyExists) return chat;
+
+          if (message.senderId !== user?.id) {
+            notifyIncomingMessage(message, found?.user);
+          }
+
           const isCurrentActive = activeChatId === message.roomId;
           const isIncoming = message.senderId !== user?.id;
           return {
@@ -634,6 +681,13 @@ export function ChatProvider({ children, onAddPing }) {
     setChats((prevChats) => {
       const updated = prevChats.map((chat) => {
         if (chat.id !== currentChatId) return chat;
+        // Prevent duplicate append
+        const exists = (chat.messages || []).some(
+          (m) => (newMessage.id && m.id === newMessage.id) ||
+                 (m.senderId === newMessage.senderId && m.content === newMessage.content && m.timestamp === newMessage.timestamp)
+        );
+        if (exists) return chat;
+
         return {
           ...chat,
           messages: [...(chat.messages || []), newMessage],

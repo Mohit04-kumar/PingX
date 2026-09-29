@@ -122,12 +122,25 @@ export function ChatView() {
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+  const isSendingRef = useRef(false);
 
-  const scrollToBottom = (behavior = 'smooth') => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior, block: 'end' });
-    } else if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+  const scrollToBottom = (behavior = 'smooth', force = false) => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isNearBottom = distanceToBottom < 160;
+
+    // Only scroll if forced (e.g. user sent message or switched chat) or already looking near bottom
+    if (force || isNearBottom) {
+      if (behavior === 'smooth') {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
     }
   };
 
@@ -177,27 +190,43 @@ export function ChatView() {
     return matchesSearch && matchesType;
   });
 
-  // Filter messages in active conversation if in-chat search query exists
-  const activeMessages = (activeChat?.messages || []).filter((msg) => {
+  // Filter and deduplicate messages in active conversation
+  const rawActiveMessages = (activeChat?.messages || []).filter((msg) => {
     if (!inChatSearchQuery.trim()) return true;
     return (msg.content || '').toLowerCase().includes(inChatSearchQuery.toLowerCase());
   });
+
+  const activeMessages = [];
+  const seenFeedIds = new Set();
+  const seenFeedSigs = new Set();
+  for (const msg of rawActiveMessages) {
+    if (!msg) continue;
+    const mId = msg.id ? String(msg.id) : null;
+    const sig = `${msg.senderId || ''}_${msg.content || ''}_${msg.timestamp || ''}`;
+    if (mId && seenFeedIds.has(mId)) continue;
+    if (seenFeedSigs.has(sig)) continue;
+    if (mId) seenFeedIds.add(mId);
+    seenFeedSigs.add(sig);
+    activeMessages.push(msg);
+  }
 
   // Scroll down instantly when switching chat
   useEffect(() => {
     if (activeChatId) {
       const timer = setTimeout(() => {
-        scrollToBottom('auto');
+        scrollToBottom('auto', true);
       }, 50);
       return () => clearTimeout(timer);
     }
   }, [activeChatId]);
 
-  // Scroll down automatically when new message comes or messages list updates
+  // Scroll down automatically when new message arrives
   useEffect(() => {
     if (activeMessages.length > 0) {
+      const lastMsg = activeMessages[activeMessages.length - 1];
+      const isMe = lastMsg?.senderId === user?.id || lastMsg?.senderId === 'user_me';
       const timer = setTimeout(() => {
-        scrollToBottom('smooth');
+        scrollToBottom(isMe ? 'auto' : 'smooth', isMe);
       }, 60);
       return () => clearTimeout(timer);
     }
@@ -222,11 +251,29 @@ export function ChatView() {
   }, [startDirectChat]);
 
   const handleSend = (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!inputContent.trim()) return;
-    sendMessage(inputContent);
+    if (e) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+    }
+    const content = inputContent.trim();
+    if (!content) return;
+    if (isSendingRef.current) return;
+    isSendingRef.current = true;
+
+    // Immediately clear input to prevent double submissions
     setInputContent('');
     setShowEmojiPicker(false);
+
+    try {
+      sendMessage(content);
+      setTimeout(() => {
+        scrollToBottom('smooth', true);
+      }, 30);
+    } finally {
+      setTimeout(() => {
+        isSendingRef.current = false;
+      }, 300);
+    }
   };
 
   const handleSelectSuggestedReply = (replyText) => {
@@ -324,7 +371,7 @@ export function ChatView() {
 
   return (
     <div 
-      className="flex flex-col lg:flex-row h-[calc(100vh-6.5rem)] rounded-3xl overflow-hidden border shadow-sm relative transition-colors duration-200"
+      className="flex flex-col lg:flex-row flex-1 h-full min-h-0 rounded-3xl overflow-hidden border shadow-sm relative transition-colors duration-200"
       style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
     >
       <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*,video/*" className="hidden" />
@@ -434,7 +481,7 @@ export function ChatView() {
         </div>
 
         {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1.5 min-h-0">
+        <div data-lenis-prevent="true" className="flex-1 overflow-y-auto p-3 space-y-1.5 min-h-0 custom-chat-scrollbar">
           {filteredChats.length === 0 ? (
             <div className="text-center py-6 px-3 text-xs space-y-4" style={{ color: 'var(--text-muted)' }}>
               <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center border" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border)', color: 'var(--accent)' }}>
@@ -725,8 +772,9 @@ export function ChatView() {
             {/* Message Feed (Scrollable with Auto-scroll down) */}
             <div 
               ref={messagesContainerRef}
+              data-lenis-prevent="true"
               onScroll={handleMessagesScroll}
-              className="flex-1 overflow-y-auto overscroll-contain min-h-0 p-4 sm:p-6 space-y-4 select-text" 
+              className="flex-1 overflow-y-auto overscroll-contain min-h-0 p-4 sm:p-6 space-y-4 select-text custom-chat-scrollbar" 
               style={{ backgroundColor: 'var(--bg-subtle)' }}
             >
               {activeMessages.length === 0 ? (
@@ -928,7 +976,7 @@ export function ChatView() {
             {showScrollBottomBtn && (
               <button
                 type="button"
-                onClick={() => scrollToBottom('smooth')}
+                onClick={() => scrollToBottom('smooth', true)}
                 className="absolute bottom-20 right-6 z-20 p-2.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl text-[#7256c3] hover:scale-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center animate-bounce"
                 title="Scroll to bottom"
               >
@@ -1024,12 +1072,6 @@ export function ChatView() {
                   type="text"
                   value={inputContent}
                   onChange={handleInputChange}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend(e);
-                    }
-                  }}
                   placeholder={`Message ${activeDisplayName}...`}
                   className="w-full bg-transparent text-xs outline-none"
                   style={{ color: 'var(--text-primary)' }}
