@@ -25,6 +25,9 @@ export function StoryViewerModal({ isOpen, story, onClose, onNext, onPrev }) {
 
   if (!isOpen || !story) return null;
 
+  const authorName = story.author?.name || story.name || 'PingX Story';
+  const authorAvatar = story.author?.avatar || story.avatar;
+
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fadeIn"
@@ -47,9 +50,9 @@ export function StoryViewerModal({ isOpen, story, onClose, onNext, onPrev }) {
         {/* Story Header */}
         <div className="absolute top-6 left-3 right-3 z-20 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
-            <Avatar src={story.avatar} name={story.name} size="sm" className="border border-white/50" />
+            <Avatar src={authorAvatar} name={authorName} size="sm" className="border border-white/50" />
             <div>
-              <span className="font-bold text-white shadow-xs">{story.name}</span>
+              <span className="font-bold text-white shadow-xs">{authorName}</span>
               <span className="text-[10px] text-white/70 block">2h ago</span>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { StoryViewerModal } from '../common/StoryViewerModal';
 import { CreatePostModal } from '../common/CreatePostModal';
 import { CreateStoryModal } from '../common/CreateStoryModal';
 import { Avatar } from '../common/Avatar';
+import { safeStorage } from '../../utils/safeStorage';
 import { 
   Plus, 
   Sparkles, 
@@ -43,22 +44,14 @@ export function DashboardView({ setActiveTab }) {
 
   // Dynamic user posts loaded from storage
   const [feed, setFeed] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('pingx_user_posts') || '[]');
-      return Array.isArray(saved) ? saved : [];
-    } catch {
-      return [];
-    }
+    const saved = safeStorage.getItem('pingx_user_posts', []);
+    return Array.isArray(saved) ? saved : [];
   });
 
   // Dynamic user stories loaded from storage
   const [stories, setStories] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('pingx_user_stories') || '[]');
-      return Array.isArray(saved) ? saved : [];
-    } catch {
-      return [];
-    }
+    const saved = safeStorage.getItem('pingx_user_stories', []);
+    return Array.isArray(saved) ? saved : [];
   });
 
   const [likedPosts, setLikedPosts] = useState({});
@@ -74,17 +67,13 @@ export function DashboardView({ setActiveTab }) {
   const handlePostCreated = (newPost) => {
     const updated = [newPost, ...feed];
     setFeed(updated);
-    try {
-      localStorage.setItem('pingx_user_posts', JSON.stringify(updated));
-    } catch (e) {}
+    safeStorage.setItem('pingx_user_posts', updated);
   };
 
   const handleStoryCreated = (newStory) => {
     const updated = [newStory, ...stories];
     setStories(updated);
-    try {
-      localStorage.setItem('pingx_user_stories', JSON.stringify(updated));
-    } catch (e) {}
+    safeStorage.setItem('pingx_user_stories', updated);
   };
 
   const toggleLike = (postId) => {
@@ -152,7 +141,7 @@ export function DashboardView({ setActiveTab }) {
               </span>
             </div>
             <h2 className="text-lg font-black text-slate-900 tracking-tight font-heading">
-              Welcome back, {user?.name?.split(' ')[0] || user?.username || 'Explorer'} 👋
+              Welcome back, {typeof user?.name === 'string' ? user.name.split(' ')[0] : (user?.username || 'Explorer')} 👋
             </h2>
             <p className="text-xs text-slate-500">
               Your real-time social space, AI assistant, and smart price tracker are active.
@@ -212,7 +201,7 @@ export function DashboardView({ setActiveTab }) {
                   </div>
                 </div>
                 <span className="text-[11px] font-medium text-slate-700 truncate max-w-[4.5rem]">
-                  {story.author?.name?.split(' ')[0] || 'Story'}
+                  {typeof story.author?.name === 'string' ? story.author.name.split(' ')[0] : (story.name || 'Story')}
                 </span>
               </button>
             ))}

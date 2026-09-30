@@ -10,7 +10,9 @@ export function ThemeProvider({ children }) {
   const theme = 'light';
 
   useEffect(() => {
-    localStorage.setItem('pingx_theme', 'light');
+    try {
+      localStorage.setItem('pingx_theme', 'light');
+    } catch {}
     const root = document.documentElement;
     root.classList.remove('theme-dark', 'theme-animation', 'theme-background');
     root.classList.add('theme-light', 'light-mode');

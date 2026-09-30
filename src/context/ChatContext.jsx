@@ -6,6 +6,7 @@ import { generateId, formatTimestamp } from '../utils/formatters';
 const ChatContext = createContext();
 import { API_BASE, SOCKET_URL } from '../config/api';
 import { io as socketIOClient } from 'socket.io-client';
+import { safeStorage } from '../utils/safeStorage';
 
 function tokenFromStorage() {
   try {
@@ -137,9 +138,7 @@ export function ChatProvider({ children, onAddPing }) {
   const [activeCall, setActiveCall] = useState(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(storageKey, JSON.stringify(chats));
-    }
+    safeStorage.setItem(storageKey, chats);
   }, [chats]);
 
   // Load chats from server when available
@@ -698,9 +697,7 @@ export function ChatProvider({ children, onAddPing }) {
           }
         };
       });
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(updated));
-      } catch {}
+      safeStorage.setItem(storageKey, updated);
       return updated;
     });
 

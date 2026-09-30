@@ -37,12 +37,13 @@ export function ConnectView({ setActiveTab }) {
     if (refreshUsers) refreshUsers();
   }, [refreshUsers]);
 
-  const filteredUsers = searchUsers(searchQuery).filter(u => u.id !== user?.id);
+  const filteredUsers = (searchUsers ? searchUsers(searchQuery) : []).filter(u => u && u.id !== user?.id);
 
   const getRequestStatus = (targetId) => {
+    if (!targetId || !Array.isArray(friendRequests)) return null;
     const req = friendRequests.find(
-      r => (r.senderId === user?.id && r.receiverId === targetId) ||
-           (r.receiverId === user?.id && r.senderId === targetId)
+      r => (r && r.senderId === user?.id && r.receiverId === targetId) ||
+           (r && r.receiverId === user?.id && r.senderId === targetId)
     );
     return req ? req.status : null;
   };

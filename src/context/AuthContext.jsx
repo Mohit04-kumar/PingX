@@ -9,31 +9,7 @@ const DEMO_ACCOUNTS = [];
 const STORAGE_KEY = 'pingx_registered_accounts';
 const REQUESTS_KEY = 'pingx_friend_requests';
 
-const safeStorage = {
-  getItem(key, fallback) {
-    if (typeof window === 'undefined') return fallback;
-    try {
-      const value = window.localStorage.getItem(key);
-      return value ? JSON.parse(value) : fallback;
-    } catch {
-      return fallback;
-    }
-  },
-  setItem(key, value) {
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(key, JSON.stringify(value));
-      } catch {}
-    }
-  },
-  removeItem(key) {
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.removeItem(key);
-      } catch {}
-    }
-  }
-};
+import { safeStorage } from '../utils/safeStorage';
 
 const isDemoOrDummy = (acc) => {
   if (!acc) return true;
@@ -172,7 +148,9 @@ export function AuthProvider({ children }) {
       if (!res.ok) return [];
       const remote = await res.json();
       if (Array.isArray(remote)) {
-        const cleanRemote = remote.filter((r) => !isDemoOrDummy(r) && r.id);
+        const cleanRemote = remote
+          .filter((r) => !isDemoOrDummy(r) && r.id)
+          .map(safeStorage.sanitizeUser);
         setAccounts(cleanRemote);
         safeStorage.setItem(STORAGE_KEY, cleanRemote);
 

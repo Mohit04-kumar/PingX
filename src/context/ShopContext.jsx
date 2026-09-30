@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { searchAndCompareProducts, PRODUCT_DATABASE } from '../services/productComparisonService';
+import { safeStorage } from '../utils/safeStorage';
 
 const ShopContext = createContext();
 
@@ -13,20 +14,14 @@ export function ShopProvider({ children, onAddPing }) {
 
   // Shopping Cart State (starts empty for clean user experience)
   const [cart, setCart] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('pingx_user_cart') || '[]');
-      return Array.isArray(saved) ? saved : [];
-    } catch {
-      return [];
-    }
+    const saved = safeStorage.getItem('pingx_user_cart', []);
+    return Array.isArray(saved) ? saved : [];
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Sync cart to localStorage
   React.useEffect(() => {
-    try {
-      localStorage.setItem('pingx_user_cart', JSON.stringify(cart));
-    } catch {}
+    safeStorage.setItem('pingx_user_cart', cart);
   }, [cart]);
 
   // Dynamic Multi-Merchant Search & Price Matrix
@@ -107,17 +102,12 @@ export function ShopProvider({ children, onAddPing }) {
   };
 
   const [watchlist, setWatchlist] = useState(() => {
-    try {
-      const saved = localStorage.getItem('pingx_watchlist');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return ['prod_sony_xm5'];
+    const saved = safeStorage.getItem('pingx_watchlist', ['prod_sony_xm5']);
+    return Array.isArray(saved) ? saved : ['prod_sony_xm5'];
   });
 
   React.useEffect(() => {
-    try {
-      localStorage.setItem('pingx_watchlist', JSON.stringify(watchlist));
-    } catch {}
+    safeStorage.setItem('pingx_watchlist', watchlist);
   }, [watchlist]);
 
   const removeFromWatchlist = (targetIdOrItem) => {
@@ -136,9 +126,7 @@ export function ShopProvider({ children, onAddPing }) {
 
   const clearWatchlist = () => {
     setWatchlist([]);
-    try {
-      localStorage.removeItem('pingx_watchlist');
-    } catch {}
+    safeStorage.removeItem('pingx_watchlist');
   };
 
   const toggleWatchlist = (product, targetPrice) => {

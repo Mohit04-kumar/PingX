@@ -119,7 +119,22 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// Search / list users
+// Helper to sanitize and compress user payload for fast, safe client delivery
+const sanitizeUserForClient = (u) => {
+  if (!u) return u;
+  const raw = u.toJSON ? u.toJSON() : { ...u };
+  const { password, ...clean } = raw;
+  // If avatar is an oversized base64 data URI (> 50KB), replace with clean CDN avatar to protect client memory
+  if (clean.avatar && typeof clean.avatar === 'string' && clean.avatar.length > 50000) {
+    const isFemale = String(clean.gender || '').toLowerCase().startsWith('f');
+    clean.avatar = isFemale
+      ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80'
+      : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80';
+  }
+  return clean;
+};
+
+// Search / list users (clean, password-free, and safe payload sizes)
 app.get('/api/users', async (req, res) => {
   try {
     const q = String(req.query.query || '').trim();
@@ -131,20 +146,22 @@ app.get('/api/users', async (req, res) => {
           $or: [{ name: regex }, { username: regex }, { email: regex }, { phone: regex }]
         };
       }
-      const users = await User.find(queryObj).limit(100).lean();
-      return res.json(users || []);
+      const users = await User.find(queryObj, '-password').sort({ createdAt: -1 }).limit(100).lean();
+      return res.json((users || []).map(sanitizeUserForClient));
     }
 
     // Fallback to data.accounts from state.json
-    if (!q) return res.json(data.accounts || []);
-    const matches = (data.accounts || []).filter(
-      (a) =>
-        (a.name || '').toLowerCase().includes(q.toLowerCase()) ||
-        (a.username || '').toLowerCase().includes(q.toLowerCase()) ||
-        (a.email || '').toLowerCase().includes(q.toLowerCase()) ||
-        (a.phone || '').includes(q)
-    );
-    res.json(matches);
+    let matches = data.accounts || [];
+    if (q) {
+      matches = matches.filter(
+        (a) =>
+          (a.name || '').toLowerCase().includes(q.toLowerCase()) ||
+          (a.username || '').toLowerCase().includes(q.toLowerCase()) ||
+          (a.email || '').toLowerCase().includes(q.toLowerCase()) ||
+          (a.phone || '').includes(q)
+      );
+    }
+    res.json(matches.map(sanitizeUserForClient));
   } catch (err) {
     console.error('Error fetching users:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
@@ -403,7 +420,7 @@ app.post('/api/auth/otp/login', async (req, res) => {
 
     otpStore.delete(idObj.key);
     const token = jwt.sign({ sub: found.id }, JWT_SECRET, { expiresIn: '30d' });
-    return res.json({ token, user: found, message: 'Signed in successfully via Email OTP.' });
+    return res.json({ token, user: sanitizeUserForClient(found), message: 'Signed in successfully via Email OTP.' });
   } catch (err) {
     console.error('Error logging in with OTP:', err);
     res.status(500).json({ error: 'OTP login failed.' });
@@ -456,7 +473,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const token = jwt.sign({ sub: found.id }, JWT_SECRET, { expiresIn: '30d' });
-    return res.json({ token, user: found, message: 'Signed in successfully!' });
+    return res.json({ token, user: sanitizeUserForClient(found), message: 'Signed in successfully!' });
   } catch (err) {
     console.error('Error logging in:', err);
     res.status(500).json({ error: 'Login failed' });
@@ -586,28 +603,12 @@ app.post('/api/auth/register', async (req, res) => {
     return res.json({ 
       success: true, 
       token, 
-      user: createdUser,
+      user: sanitizeUserForClient(createdUser),
       message: 'Account successfully registered and verified.' 
     });
   } catch (err) {
     console.error('Error registering user:', err);
     res.status(500).json({ error: 'Registration failed: ' + (err.message || 'Server error') });
-  }
-});
-
-// Get all registered users (excluding sensitive password hash)
-app.get('/api/users', async (req, res) => {
-  try {
-    let users = [];
-    if (isDbConnected()) {
-      users = await User.find({}, '-password').sort({ createdAt: -1 }).lean();
-    } else {
-      users = data.accounts.map(({ password, ...u }) => u);
-    }
-    res.json(users);
-  } catch (err) {
-    console.error('Error fetching users:', err);
-    res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
@@ -626,13 +627,13 @@ app.put('/api/users/:id', async (req, res) => {
         { returnDocument: 'after' }
       ).lean();
       if (!updated) return res.status(404).json({ error: 'User not found' });
-      return res.json({ success: true, user: updated });
+      return res.json({ success: true, user: sanitizeUserForClient(updated) });
     }
 
     const idx = data.accounts.findIndex((a) => a.id === id);
     if (idx !== -1) {
       data.accounts[idx] = { ...data.accounts[idx], ...updateData };
-      return res.json({ success: true, user: data.accounts[idx] });
+      return res.json({ success: true, user: sanitizeUserForClient(data.accounts[idx]) });
     }
     return res.status(404).json({ error: 'User not found' });
   } catch (err) {

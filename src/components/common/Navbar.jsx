@@ -111,7 +111,7 @@ export function Navbar({ onEnterApp, onOpenAuth, isLoggedIn: propIsLoggedIn }) {
                     alt={user.name || 'User'}
                     className="w-5 h-5 rounded-full object-cover border border-slate-300"
                   />
-                  <span className="max-w-[100px] truncate">{user.name?.split(' ')[0] || user.username || 'Account'}</span>
+                  <span className="max-w-[100px] truncate">{typeof user.name === 'string' ? user.name.split(' ')[0] : (user.username || 'Account')}</span>
                 </button>
                 <button
                   onClick={logout}
